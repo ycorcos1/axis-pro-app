@@ -1,0 +1,17 @@
+appId: com.axispro.app
+productName: Axis Pro
+directories:
+  buildResources: build
+files:
+  - app/main/**/*
+  - dist/**/*
+  - package.json
+extraResources:
+  - resources/ffmpeg/mac/**/*
+mac:
+  category: public.app-category.video
+  target: dmg
+  icon: build/icon.icns
+dmg:
+  title: Axis Pro
+

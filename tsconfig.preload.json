@@ -1,0 +1,13 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "node",
+    "outDir": "./dist/preload",
+    "rootDir": "./app/preload"
+  },
+  "include": ["app/preload/**/*"],
+  "exclude": ["app/renderer"]
+}
+

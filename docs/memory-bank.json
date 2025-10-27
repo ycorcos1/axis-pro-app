@@ -1,0 +1,65 @@
+{
+  "version": "0.1.0",
+  "project": "Axis Pro",
+  "architecture": "Electron + React + TypeScript",
+  "decisions": [
+    {
+      "id": "arch-fwk",
+      "when": "2025-01-27",
+      "what": "Electron + React + TypeScript",
+      "why": "Ship speed, proven ecosystem, cross-platform, type safety"
+    },
+    {
+      "id": "build-tool",
+      "when": "2025-01-27",
+      "what": "Vite for renderer, TypeScript for main/preload",
+      "why": "Fast HMR for React development, native ESM support"
+    },
+    {
+      "id": "dev-workflow",
+      "when": "2025-01-27",
+      "what": "Concurrent Vite + Electron with wait-on",
+      "why": "Seamless dev experience with auto-reload"
+    },
+    {
+      "id": "security-model",
+      "when": "2025-01-27",
+      "what": "contextIsolation=true, nodeIntegration=false",
+      "why": "Secure IPC bridge via preload script"
+    },
+    {
+      "id": "media-engine",
+      "when": "2025-01-27",
+      "what": "Local FFmpeg via child_process.spawn",
+      "why": "Predictable performance, full control (planned PR #4)"
+    }
+  ],
+  "modules": {
+    "mainProcess": {
+      "owner": "main",
+      "api": ["createWindow()", "app lifecycle handlers"],
+      "notes": "Manages Electron window creation and app events"
+    },
+    "preload": {
+      "owner": "main",
+      "api": ["window.electronAPI.platform"],
+      "notes": "Secure IPC bridge via contextBridge, ready for extension"
+    }
+  },
+  "todos": [
+    "PR #1: ✅ Initialize Electron + React skeleton - COMPLETED",
+    "PR #2: Design tokens and layout frame",
+    "PR #3: IPC surface setup",
+    "PR #4: FFmpeg service implementation"
+  ],
+  "current_pr": "PR #1 - Initialize Electron + React app skeleton - COMPLETED",
+  "completed_prs": [
+    {
+      "pr": "#1",
+      "title": "Initialize Electron + React app skeleton",
+      "completed": "2025-01-27",
+      "branch": "feature/init-electron-react"
+    }
+  ]
+}
+
