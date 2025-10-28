@@ -8,8 +8,12 @@ files:
   - app/renderer/dist/**/*
   - package.json
 extraResources:
-  - resources/ffmpeg/mac/**/*
-  - resources/ffmpeg/windows/**/*
+  - from: resources/ffmpeg/mac
+    to: ffmpeg/mac
+    filter: ["**/*", "!.DS_Store"]
+  - from: resources/ffmpeg/windows
+    to: ffmpeg/windows
+    filter: ["**/*", "!.DS_Store"]
 mac:
   category: public.app-category.video
   target: dmg
