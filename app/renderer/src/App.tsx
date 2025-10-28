@@ -81,17 +81,22 @@ const App: React.FC = () => {
   /**
    * Save the current project state
    * @param manual - Whether this is a manual save (from user clicking Save button)
+   * @param clipsToSave - Optional clips array to save (for immediate saves after state changes)
    */
-  const handleSaveProject = async (manual: boolean = false) => {
+  const handleSaveProject = async (manual: boolean = false, clipsToSave?: Clip[]) => {
     if (!currentProjectId) {
       console.warn("[App] No project to save");
       return;
     }
 
+    // Use provided clips or current state
+    const clipsForSave = clipsToSave || clips;
+
     try {
       setIsSaving(true);
       setIsManualSave(manual);
       console.log("[App] Saving project:", currentProjectId);
+      console.log("[App] Saving with", clipsForSave.length, "clips");
       const project = await window.electronAPI.loadProject(currentProjectId);
       if (!project) {
         console.error("[App] Cannot save: project not found");
@@ -100,7 +105,7 @@ const App: React.FC = () => {
 
       // Convert clips from editing format to project format
       const projectClips: Record<string, any> = {};
-      clips.forEach((clip) => {
+      clipsForSave.forEach((clip) => {
         projectClips[clip.id] = {
           id: clip.id,
           path: clip.path,
@@ -111,7 +116,7 @@ const App: React.FC = () => {
       });
 
       // Create segments from clips (currently just one clip with trim points)
-      const segments = clips
+      const segments = clipsForSave
         .filter((clip) => clip.inMs !== 0 || clip.outMs !== clip.duration)
         .map((clip) => ({
           id: `seg-${clip.id}`,
@@ -127,13 +132,14 @@ const App: React.FC = () => {
 
       // Save the project
       await window.electronAPI.saveProject(project);
+      console.log("[App] Project saved with", Object.keys(projectClips).length, "clips");
 
       // Generate thumbnail if we have clips and no thumbnail yet
-      if (clips.length > 0 && !project.previewThumbPath) {
+      if (clipsForSave.length > 0 && !project.previewThumbPath) {
         try {
           await window.electronAPI.generateProjectThumbnail(
             currentProjectId,
-            clips[0].path
+            clipsForSave[0].path
           );
         } catch (error) {
           console.error("[App] Failed to generate thumbnail:", error);
@@ -258,16 +264,16 @@ const App: React.FC = () => {
       console.log("[App] Current clips before import:", clips);
       const importedClips = await window.electronAPI.importClips(filePaths);
       console.log("[App] Imported clips received:", importedClips);
-      setClips((prevClips) => {
-        const newClips = [...prevClips, ...importedClips];
-        console.log("[App] New clips state:", newClips);
-        return newClips;
-      });
+      
+      // Update clips state and get the new array for saving
+      const newClips = [...clips, ...importedClips];
+      setClips(newClips);
+      console.log("[App] New clips state:", newClips);
       console.log("[App] Import successful:", importedClips.length, "clips");
 
-      // Auto-save after import
+      // Auto-save after import with the updated clips array
       if (currentProjectId) {
-        await handleSaveProject();
+        await handleSaveProject(false, newClips);
       }
     } catch (error) {
       console.error("[App] Import failed:", error);
@@ -348,19 +354,21 @@ const App: React.FC = () => {
   /**
    * Handle removing a clip from the project
    */
-  const handleRemoveClip = (clipId: string) => {
-    setClips((prevClips) => {
-      const updatedClips = prevClips.filter((clip) => clip.id !== clipId);
-
-      // If the removed clip was selected, clear selection
-      if (selectedClipId === clipId) {
-        setSelectedClipId(null);
-      }
-
-      return updatedClips;
-    });
-
+  const handleRemoveClip = async (clipId: string) => {
+    const updatedClips = clips.filter((clip) => clip.id !== clipId);
+    setClips(updatedClips);
+    
+    // If the removed clip was selected, clear selection
+    if (selectedClipId === clipId) {
+      setSelectedClipId(null);
+    }
+    
     showToast("Clip removed from project", "info");
+    
+    // Auto-save after removal
+    if (currentProjectId) {
+      await handleSaveProject(false, updatedClips);
+    }
   };
 
   /**
