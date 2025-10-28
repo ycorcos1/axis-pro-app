@@ -124,6 +124,7 @@ const App: React.FC = () => {
         projectClips[clip.id] = {
           id: clip.id,
           path: clip.path,
+          filename: clip.filename,
           durationMs: clip.duration,
           width: clip.width,
           height: clip.height,
@@ -196,7 +197,7 @@ const App: React.FC = () => {
         loadedClips.push({
           id: clip.id,
           path: clip.path,
-          filename: clip.path.split(/[/\\]/).pop() || "Unknown",
+          filename: clip.filename || clip.path.split(/[/\\]/).pop() || "Unknown",
           duration: clip.durationMs,
           width: clip.width,
           height: clip.height,
