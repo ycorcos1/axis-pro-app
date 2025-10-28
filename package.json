@@ -10,7 +10,9 @@
     "build:main": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json",
     "build:renderer": "vite build",
     "pack:mac": "electron-builder --mac dmg",
-    "build:mac": "npm run build && npm run pack:mac"
+    "pack:win": "electron-builder --win nsis",
+    "build:mac": "npm run build && npm run pack:mac",
+    "build:win": "npm run build && npm run pack:win"
   },
   "keywords": [
     "video-editor",

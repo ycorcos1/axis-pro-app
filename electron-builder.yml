@@ -3,14 +3,19 @@ productName: Axis Pro
 directories:
   buildResources: build
 files:
-  - app/main/**/*
-  - dist/**/*
+  - dist/main/**/*
+  - dist/preload/**/*
+  - app/renderer/dist/**/*
   - package.json
 extraResources:
   - resources/ffmpeg/mac/**/*
+  - resources/ffmpeg/windows/**/*
 mac:
   category: public.app-category.video
   target: dmg
-  icon: null
+  icon: build/icon.icns
 dmg:
   title: Axis Pro
+win:
+  target: nsis
+  icon: build/icon.ico

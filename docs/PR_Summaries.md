@@ -2312,7 +2312,7 @@ dist/Axis Pro-0.1.0.dmg
 - App is unsigned (requires right-click → Open on first launch)
 - Not notarized with Apple (not required for grading)
 - No automatic updates mechanism (manual download updates)
-- macOS only (Windows/Linux builds not configured)
+- Windows builds require manual FFmpeg binary download (see `resources/ffmpeg/windows/README.md`)
 
 ### Distribution Workflow
 
@@ -2367,7 +2367,16 @@ dist/Axis Pro-0.1.0.dmg
 
 **Project Status:** MVP Complete - Ready for Submission
 
-**Status:** ✅ COMPLETE - MVP Ready for Distribution
+**Windows Support Added:**
+
+- Updated `ffmpegService.ts` for cross-platform binary detection
+- Added Windows build scripts to `package.json`
+- Configured `electron-builder.yml` for NSIS installer
+- Updated README with Windows installation instructions
+- Created Windows FFmpeg directory structure
+- Windows users can now build: `npm run build:win`
+
+**Status:** ✅ COMPLETE - MVP Ready for Distribution (macOS + Windows)
 
 ---
 
@@ -2386,5 +2395,6 @@ dist/Axis Pro-0.1.0.dmg
 9. ✅ PR #9: Dashboard (projects grid)
 10. ✅ PR #10: UX Polish (Toast Notifications)
 11. ✅ PR #11: Project Save/Load
+12. ✅ PR #12: Packaging and Distribution
 
-**Next Up:** PR #12 - Packaging for macOS (.dmg)
+**Windows Support:** Added in post-PR #12 update

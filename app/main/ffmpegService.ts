@@ -14,22 +14,28 @@ import type { MediaInfo, ExportOptions } from "../shared/types.js";
  * Handles both development and production modes
  */
 function getFFmpegPath(): string {
+  const platform = process.platform;
+  const binaryName = platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+
   // In production, FFmpeg is bundled in extraResources
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "ffmpeg", "mac", "ffmpeg");
+    return path.join(process.resourcesPath, "ffmpeg", platform, binaryName);
   }
 
   // In development, need to go up from dist/main/main to project root
   const appPath = app.getAppPath();
 
   // If we're in a dist folder (compiled), go up to project root
-  if (appPath.includes("/dist/")) {
-    const projectRoot = appPath.split("/dist/")[0];
-    return path.join(projectRoot, "resources", "ffmpeg", "mac", "ffmpeg");
+  if (appPath.includes("/dist/") || appPath.includes("\\dist\\")) {
+    const separator = process.platform === "win32" ? "\\" : "/";
+    const projectRoot = appPath.includes("/dist/")
+      ? appPath.split("/dist/")[0]
+      : appPath.split("\\dist\\")[0];
+    return path.join(projectRoot, "resources", "ffmpeg", platform, binaryName);
   }
 
   // Otherwise use app path directly
-  return path.join(appPath, "resources", "ffmpeg", "mac", "ffmpeg");
+  return path.join(appPath, "resources", "ffmpeg", platform, binaryName);
 }
 
 /**
@@ -37,22 +43,27 @@ function getFFmpegPath(): string {
  * Handles both development and production modes
  */
 function getFFprobePath(): string {
+  const platform = process.platform;
+  const binaryName = platform === "win32" ? "ffprobe.exe" : "ffprobe";
+
   // In production, FFprobe is bundled in extraResources
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "ffmpeg", "mac", "ffprobe");
+    return path.join(process.resourcesPath, "ffmpeg", platform, binaryName);
   }
 
   // In development, need to go up from dist/main/main to project root
   const appPath = app.getAppPath();
 
   // If we're in a dist folder (compiled), go up to project root
-  if (appPath.includes("/dist/")) {
-    const projectRoot = appPath.split("/dist/")[0];
-    return path.join(projectRoot, "resources", "ffmpeg", "mac", "ffprobe");
+  if (appPath.includes("/dist/") || appPath.includes("\\dist\\")) {
+    const projectRoot = appPath.includes("/dist/")
+      ? appPath.split("/dist/")[0]
+      : appPath.split("\\dist\\")[0];
+    return path.join(projectRoot, "resources", "ffmpeg", platform, binaryName);
   }
 
   // Otherwise use app path directly
-  return path.join(appPath, "resources", "ffmpeg", "mac", "ffprobe");
+  return path.join(appPath, "resources", "ffmpeg", platform, binaryName);
 }
 
 /**

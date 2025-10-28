@@ -87,12 +87,25 @@ function registerLocalFileProtocol() {
 
 function createWindow() {
   // Create the browser window
+  // Determine preload path for dev vs production
+  const isDev = !app.isPackaged;
+  let preloadPath: string;
+
+  if (isDev) {
+    // In dev, __dirname is dist/main/main/, so go up 2 levels to dist/, then into preload
+    preloadPath = path.join(__dirname, "../../preload/preload/preload.js");
+  } else {
+    // In production, files are packaged as: main/**/*, preload/**/*, and app/renderer/dist/**/*
+    // From main/main/main.js: ../../preload/preload/preload.js
+    preloadPath = path.join(__dirname, "../../preload/preload/preload.js");
+  }
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     title: "Axis Pro",
     webPreferences: {
-      preload: path.join(__dirname, "../../preload/preload/preload.js"),
+      preload: preloadPath,
       nodeIntegration: false,
       contextIsolation: true,
       webSecurity: false, // Temporarily disable for video loading (will re-enable with better solution)
@@ -102,13 +115,9 @@ function createWindow() {
   });
 
   console.log("[Main] __dirname:", __dirname);
-  console.log(
-    "[Main] Preload path:",
-    path.join(__dirname, "../../preload/preload/preload.js")
-  );
+  console.log("[Main] Preload path:", preloadPath);
 
   // Check if preload file exists
-  const preloadPath = path.join(__dirname, "../../preload/preload/preload.js");
   if (fs.existsSync(preloadPath)) {
     console.log("[Main] ✓ Preload file exists");
   } else {
@@ -122,9 +131,7 @@ function createWindow() {
     }
   });
 
-  // Load the app
-  // Always try dev server first when running via npm run dev
-  const isDev = !app.isPackaged;
+  // Load the app (isDev already defined above)
 
   if (isDev) {
     // Try common Vite dev server ports
@@ -137,7 +144,15 @@ function createWindow() {
     });
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
+    // In production, load from the packaged renderer directory
+    // Files are packaged as: /dist/main/main/main.js and /app/renderer/dist/renderer/index.html
+    // So from /dist/main/main/, need to go up 3 levels to root, then into app/renderer
+    const rendererPath = path.join(
+      __dirname,
+      "../../../app/renderer/dist/renderer/index.html"
+    );
+    console.log("[Main] Loading renderer from:", rendererPath);
+    mainWindow.loadFile(rendererPath);
   }
 }
 

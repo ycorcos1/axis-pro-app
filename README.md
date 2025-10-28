@@ -181,11 +181,13 @@ Builds the app and packages it into a `.dmg` in one command.
 
 ### Download from GitHub Releases
 
-Pre-built macOS installers are available on [GitHub Releases](https://github.com/yourusername/axis-pro-app/releases).
+Pre-built installers for macOS and Windows are available on [GitHub Releases](https://github.com/yourusername/axis-pro-app/releases).
 
-**Latest Release**: Download `Axis Pro-0.1.0.dmg` and follow the installation instructions below.
+**Latest Release**: Download your platform-specific installer and follow the installation instructions below.
 
 ### Installation
+
+#### macOS
 
 1. **Download** the `.dmg` file from GitHub Releases
 2. **Mount** the DMG by double-clicking it
@@ -197,9 +199,24 @@ Pre-built macOS installers are available on [GitHub Releases](https://github.com
 - Right-click the app → Open → Click "Open" in the dialog
 - Or add an exception in System Preferences → Security & Privacy
 
+#### Windows
+
+1. **Download** the `.exe` installer from GitHub Releases
+2. **Run** the installer (`Axis Pro Setup 0.1.0.exe`)
+3. **Follow** the installation wizard
+4. **Launch** from Start Menu or desktop shortcut
+
 ### System Requirements
 
+**macOS:**
+
 - **macOS**: 10.14 (Mojave) or later
+- **RAM**: 4 GB minimum (8 GB recommended)
+- **Storage**: 500 MB for the app + space for your projects
+
+**Windows:**
+
+- **Windows**: 10 or later
 - **RAM**: 4 GB minimum (8 GB recommended)
 - **Storage**: 500 MB for the app + space for your projects
 
@@ -210,14 +227,18 @@ To create a new release:
 1. **Build the app**:
 
    ```bash
+   # macOS
    npm run build:mac
+
+   # Windows (run on Windows machine or CI/CD)
+   npm run build:win
    ```
 
 2. **Create a release on GitHub**:
    - Go to your repository on GitHub
    - Click "Releases" → "Create a new release"
    - Create a new tag (e.g., `v0.1.0`)
-   - Upload the `.dmg` file from `dist/` directory
+   - Upload the `.dmg` file (and `.exe` if built) from `dist/` directory
    - Add release notes highlighting MVP features
    - Publish the release
 
