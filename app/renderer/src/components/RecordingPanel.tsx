@@ -125,7 +125,7 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
         // Use a promise-based play with error handling
         videoPreviewRef.current.play().catch((err) => {
           // Ignore AbortError as it's harmless (interrupted by new load)
-          if (err.name !== 'AbortError') {
+          if (err.name !== "AbortError") {
             console.warn("[Recording] Video play warning:", err);
           }
         });
@@ -163,14 +163,14 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       console.log("[Recording] Starting recording...");
 
       let screenStream: MediaStream | null = null;
-      
+
       // Get screen stream only for screen/screen-camera modes
       if (mode === "screen" || mode === "screen-camera") {
         if (!selectedSourceId) {
           setError("Please select a screen or window");
           return;
         }
-        
+
         screenStream = await navigator.mediaDevices.getUserMedia({
           audio: false,
           video: {
@@ -206,13 +206,17 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
             });
             webcamStreamRef.current = webcamStream;
             console.log("[Recording] Webcam stream acquired");
-            
+
             // Set up preview if in movie mode and not already playing
-            if (mode === "movie" && videoPreviewRef.current && !videoPreviewRef.current.srcObject) {
+            if (
+              mode === "movie" &&
+              videoPreviewRef.current &&
+              !videoPreviewRef.current.srcObject
+            ) {
               videoPreviewRef.current.srcObject = webcamStream;
               videoPreviewRef.current.play().catch((err) => {
                 // Ignore AbortError as it's harmless
-                if (err.name !== 'AbortError') {
+                if (err.name !== "AbortError") {
                   console.warn("[Recording] Video play warning:", err);
                 }
               });
@@ -267,7 +271,9 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
 
       // Verify we have at least one video or audio track
       if (combinedStream.getTracks().length === 0) {
-        setError("No media streams available. Please enable webcam or microphone.");
+        setError(
+          "No media streams available. Please enable webcam or microphone."
+        );
         stopAllStreams();
         return;
       }
@@ -326,7 +332,7 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       console.log("[Recording] Pausing recording...");
       mediaRecorderRef.current.pause();
       setIsPaused(true);
-      
+
       // Pause timer
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -343,7 +349,7 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       console.log("[Recording] Resuming recording...");
       mediaRecorderRef.current.resume();
       setIsPaused(false);
-      
+
       // Resume timer
       timerRef.current = window.setInterval(() => {
         setRecordingTime((prev) => prev + 1);
@@ -467,7 +473,11 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
           {mode === "screen" && "Screen Recording"}
           {mode === "screen-camera" && "Screen Recording with Camera"}
         </h3>
-        <button className="close-btn" onClick={handleClose} disabled={isRecording}>
+        <button
+          className="close-btn"
+          onClick={handleClose}
+          disabled={isRecording}
+        >
           ×
         </button>
       </div>
