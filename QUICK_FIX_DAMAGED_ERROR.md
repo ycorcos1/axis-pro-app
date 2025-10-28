@@ -60,9 +60,8 @@ Add this warning box at the top of the release notes:
 
 ```markdown
 > **⚠️ macOS Users:** You will see a security warning on first launch. This is normal for unsigned apps.
-> 
+>
 > **Fix:** Right-click the app → "Open" → "Open" again. Or run: `xattr -cr "/Applications/Axis Pro.app"`
-> 
+>
 > You only need to do this once. Future launches work normally.
 ```
-

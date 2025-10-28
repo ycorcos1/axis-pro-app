@@ -75,11 +75,13 @@ If missing, you may have downloaded a development build. Download the official r
 ### App won't launch at all (crash on startup)
 
 1. **Check Console.app** for error messages:
+
    - Open Console.app
    - Search for "Axis Pro"
    - Look for crash logs
 
 2. **Check architecture compatibility:**
+
    - The macOS build is for Apple Silicon (M1/M2/M3)
    - Intel Macs are not currently supported
    - Check: Apple menu → About This Mac → Chip
@@ -99,6 +101,7 @@ If missing, you may have downloaded a development build. Download the official r
 Windows may show a warning: "Windows protected your PC"
 
 **Solution:**
+
 1. Click **"More info"**
 2. Click **"Run anyway"**
 3. The installer will proceed
@@ -129,11 +132,13 @@ Official releases include FFmpeg pre-bundled.
 Check disk permissions:
 
 **macOS:**
+
 ```bash
 ls -la ~/Library/Application\ Support/axis-pro-app/
 ```
 
 **Windows:**
+
 ```cmd
 dir "%APPDATA%\axis-pro-app"
 ```
@@ -192,9 +197,9 @@ This means FFmpeg is not working. See FFmpeg troubleshooting above.
 **Is this safe despite the warnings?**
 
 Yes! The security warnings appear because:
+
 - The app is not code-signed (requires $99/year Apple Developer account)
 - Source code is public on GitHub (you can audit it)
 - Built from open-source Electron + React + FFmpeg
 
 The warnings are macOS/Windows being cautious, not indicating actual malware.
-

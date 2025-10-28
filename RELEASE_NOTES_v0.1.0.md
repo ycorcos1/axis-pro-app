@@ -30,6 +30,7 @@ Professional-grade, minimalist desktop video editor built with Electron + React 
    - You only need to do this once; subsequent launches work normally
 
 **If you see "damaged" error:**
+
 ```bash
 # Remove quarantine attribute from Terminal:
 xattr -cr "/Applications/Axis Pro.app"
@@ -101,4 +102,3 @@ Built with Electron, React, TypeScript, FFmpeg, and Vite.
 ---
 
 **Full Changelog**: https://github.com/YOUR_USERNAME/axis-pro-app/commits/v0.1.0
-
