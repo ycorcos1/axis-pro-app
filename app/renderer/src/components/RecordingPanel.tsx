@@ -50,6 +50,7 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
   const webcamStreamRef = useRef<MediaStream | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
+  const screenPreviewRef = useRef<HTMLVideoElement | null>(null);
 
   /**
    * Load available desktop sources on mount
@@ -85,6 +86,15 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       stopAllStreams();
     };
   }, []);
+
+  /**
+   * Initialize screen preview when source changes in PiP mode
+   */
+  useEffect(() => {
+    if (mode === "screen-camera" && selectedSourceId) {
+      initializeScreenPreview();
+    }
+  }, [selectedSourceId, mode]);
 
   /**
    * Load available desktop capture sources
@@ -141,6 +151,43 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
   };
 
   /**
+   * Initialize screen preview for PiP mode
+   */
+  const initializeScreenPreview = async () => {
+    if (!selectedSourceId) return;
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: false,
+        video: {
+          // @ts-ignore - Electron-specific constraint
+          mandatory: {
+            chromeMediaSource: "desktop",
+            chromeMediaSourceId: selectedSourceId,
+          },
+        } as any,
+      });
+
+      screenStreamRef.current = stream;
+
+      // Set screen preview
+      if (screenPreviewRef.current) {
+        screenPreviewRef.current.srcObject = stream;
+        screenPreviewRef.current.play().catch((err) => {
+          if (err.name !== "AbortError") {
+            console.warn("[Recording] Screen preview play warning:", err);
+          }
+        });
+      }
+
+      console.log("[Recording] Screen preview initialized");
+    } catch (err) {
+      console.error("[Recording] Failed to initialize screen preview:", err);
+      setError("Failed to access screen. Please check permissions.");
+    }
+  };
+
+  /**
    * Get the selected source object
    */
   const selectedSource = sources.find((s) => s.id === selectedSourceId);
@@ -192,7 +239,10 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       let webcamStream: MediaStream | null = null;
       if (enableWebcam || mode === "movie" || mode === "screen-camera") {
         // For movie mode and screen-camera mode, reuse the preview stream if available
-        if ((mode === "movie" || mode === "screen-camera") && webcamStreamRef.current) {
+        if (
+          (mode === "movie" || mode === "screen-camera") &&
+          webcamStreamRef.current
+        ) {
           webcamStream = webcamStreamRef.current;
           console.log("[Recording] Reusing webcam preview stream");
         } else {
@@ -573,9 +623,18 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
               Preview: Screen + Camera (bottom-left)
             </div>
             <div className="pip-preview-content">
-              <div className="pip-screen-placeholder">
-                <span>🖥️ Screen will appear here</span>
-              </div>
+              <video
+                ref={screenPreviewRef}
+                className="pip-screen-preview"
+                autoPlay
+                muted
+                playsInline
+              />
+              {!selectedSourceId && (
+                <div className="pip-screen-placeholder">
+                  <span>🖥️ Select a screen source above</span>
+                </div>
+              )}
               <video
                 ref={videoPreviewRef}
                 className="pip-webcam-overlay"
