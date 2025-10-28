@@ -1,0 +1,306 @@
+.properties-panel {
+  width: var(--properties-width);
+  height: 100%;
+  background: var(--color-bg-surface);
+  border-left: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.properties-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: var(--spacing-lg);
+  word-wrap: break-word;
+}
+
+.properties-section {
+  margin-bottom: var(--spacing-xl);
+}
+
+.properties-section:last-child {
+  margin-bottom: var(--spacing-md);
+}
+
+.section-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
+  color: var(--color-text-primary);
+  margin-bottom: var(--spacing-md);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.property-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm) 0;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.property-label {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.property-value {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-primary);
+  font-family: "SF Mono", Monaco, "Courier New", monospace;
+}
+
+.export-button {
+  width: 100%;
+  padding: var(--spacing-md);
+  background: var(--color-accent);
+  color: var(--color-bg-primary);
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-bold);
+  cursor: pointer;
+  transition: var(--transition-base);
+  box-shadow: var(--shadow-soft);
+}
+
+.export-button:hover {
+  background: var(--color-accent-alt);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.export-button:active {
+  transform: scale(0.98);
+}
+
+.export-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Tabs */
+.properties-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.tab-button {
+  flex: 1;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border-bottom: 2px solid transparent;
+}
+
+.tab-button:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.tab-button.active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+/* Trim controls */
+.trim-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-md);
+  width: 100%;
+  min-width: 0;
+}
+
+.trim-control {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  width: 100%;
+  min-width: 0;
+}
+
+.trim-label-row {
+  display: flex;
+  align-items: center;
+}
+
+.trim-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.trim-input-row {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+  min-width: 0;
+  flex-wrap: wrap;
+}
+
+.trim-input {
+  flex: 1;
+  padding: 4px 6px;
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: 11px;
+  font-family: "SF Mono", Monaco, "Courier New", monospace;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  min-width: 0;
+}
+
+.trim-input:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.trim-input.editing {
+  border-color: var(--color-accent);
+  background: rgba(35, 136, 255, 0.05);
+  cursor: text;
+}
+
+.trim-input[readonly] {
+  cursor: pointer;
+}
+
+.trim-input[readonly]:hover {
+  border-color: var(--color-accent);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.trim-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--spacing-sm);
+  background: rgba(35, 136, 255, 0.05);
+  border: 1px solid rgba(35, 136, 255, 0.2);
+  border-radius: var(--radius-sm);
+  margin-bottom: var(--spacing-md);
+}
+
+.trim-info-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.trim-info-value {
+  font-size: var(--font-size-sm);
+  color: var(--color-accent);
+  font-weight: var(--font-weight-bold);
+  font-family: "SF Mono", Monaco, "Courier New", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Nudge buttons */
+.nudge-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--spacing-xs);
+}
+
+.nudge-button {
+  padding: var(--spacing-xs);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  min-width: 0;
+}
+
+.nudge-button:hover {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: white;
+}
+
+.nudge-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Export controls */
+.export-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+  margin-bottom: var(--spacing-md);
+}
+
+.export-preset-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-weight: var(--font-weight-medium);
+}
+
+.export-preset-select {
+  padding: var(--spacing-sm);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.export-preset-select:hover {
+  border-color: var(--color-accent);
+}
+
+.export-preset-select:focus {
+  border-color: var(--color-accent);
+  outline: none;
+}
+
+.property-path {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.property-value-editable {
+  cursor: pointer;
+}
+
+.property-value-editable:hover {
+  color: var(--color-accent);
+}
+
+.property-input {
+  flex: 1;
+  padding: var(--spacing-xs) var(--spacing-sm);
+  background: var(--color-bg-primary);
+  border: 1px solid var(--color-accent);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-family: inherit;
+  outline: none;
+}
+
+.property-input:focus {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 2px rgba(35, 136, 255, 0.2);
+}

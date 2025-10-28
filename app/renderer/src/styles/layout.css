@@ -1,0 +1,62 @@
+/**
+ * Main Layout Styles
+ * @mem ref: design-spec
+ * Grid layout for Axis Pro main interface
+ */
+
+.app-container {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-topbar {
+  height: var(--topbar-height);
+  flex-shrink: 0;
+}
+
+.app-main-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+.app-media-library {
+  width: var(--sidebar-width);
+  flex-shrink: 0;
+}
+
+.app-preview {
+  flex: 1;
+}
+
+.app-properties {
+  width: var(--properties-width);
+  flex-shrink: 0;
+}
+
+.app-timeline {
+  height: var(--timeline-height);
+  flex-shrink: 0;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--color-bg-primary);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-text-muted);
+  border-radius: var(--radius-sm);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-secondary);
+}

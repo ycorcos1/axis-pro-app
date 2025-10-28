@@ -1,0 +1,281 @@
+.timeline {
+  height: var(--timeline-height);
+  background: var(--color-bg-surface);
+  border-top: 1px solid var(--color-border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.timeline-header {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 var(--spacing-lg);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.timeline-header-button {
+  background: none;
+  border: none;
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  padding: var(--spacing-sm) var(--spacing-md);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+}
+
+.timeline-header-button:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+}
+
+.timeline-zoom {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+}
+
+.zoom-button {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: var(--color-bg-primary);
+  border-radius: var(--radius-sm);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  cursor: pointer;
+  transition: var(--transition-base);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zoom-button:hover {
+  background: var(--color-accent);
+  color: var(--color-bg-primary);
+}
+
+.zoom-label {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  min-width: 40px;
+  text-align: center;
+}
+
+.timeline-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Timecode ruler */
+.timeline-ruler {
+  height: 30px;
+  border-bottom: 1px solid var(--color-border);
+  position: relative;
+  background: var(--color-bg-primary);
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.ruler-tick {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.ruler-tick-line {
+  width: 1px;
+  height: 8px;
+  background: var(--color-border);
+}
+
+.ruler-tick-label {
+  font-size: 10px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.timeline-track-container {
+  flex: 1;
+  position: relative;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: var(--spacing-lg);
+}
+
+.timeline-track {
+  height: 80px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.timeline-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  width: 100%;
+  color: var(--color-text-muted);
+}
+
+.timeline-empty-text {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+}
+
+/* Clip container - represents full clip duration */
+.timeline-clip-container {
+  position: relative;
+  height: 60px;
+  min-width: 200px;
+  flex-shrink: 0;
+}
+
+/* Full clip background - grayed out, shows full duration */
+.timeline-clip-full {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  display: flex;
+  align-items: center;
+  padding: 0 var(--spacing-md);
+  overflow: hidden;
+}
+
+.clip-filename {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Active (trimmed) region - highlighted */
+.timeline-clip-active {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  background: var(--color-accent);
+  opacity: 0.3;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-accent);
+  transition: opacity var(--transition-base);
+}
+
+.timeline-clip-active:hover {
+  opacity: 0.4;
+}
+
+/* Trim handles */
+.timeline-trim-handle {
+  position: absolute;
+  top: 0;
+  width: 12px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 10;
+  transition: var(--transition-base);
+}
+
+.timeline-trim-handle-in {
+  left: -6px;
+}
+
+.timeline-trim-handle-out {
+  right: -6px;
+}
+
+.timeline-playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #ff0000;
+  z-index: 5;
+  pointer-events: none;
+  transition: left 0.05s ease-out;
+}
+
+.timeline-playhead::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 6px solid transparent;
+  border-right: 6px solid transparent;
+  border-top: 8px solid #ff0000;
+}
+
+.trim-handle-line {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  height: 100%;
+  background: var(--color-accent);
+  transition: var(--transition-base);
+}
+
+.trim-handle-grip {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12px;
+  height: 24px;
+  background: var(--color-accent);
+  border-radius: var(--radius-sm);
+  border: 2px solid var(--color-bg-surface);
+  box-shadow: var(--shadow-soft);
+  transition: var(--transition-base);
+}
+
+/* Hover states */
+.timeline-trim-handle:hover .trim-handle-line {
+  width: 3px;
+  background: var(--color-accent-bright, #33b5ff);
+}
+
+.timeline-trim-handle:hover .trim-handle-grip {
+  background: var(--color-accent-bright, #33b5ff);
+  transform: translate(-50%, -50%) scale(1.1);
+}
+
+/* Dragging states */
+.timeline-trim-handle.dragging .trim-handle-line {
+  width: 3px;
+  background: var(--color-accent-bright, #33b5ff);
+}
+
+.timeline-trim-handle.dragging .trim-handle-grip {
+  background: var(--color-accent-bright, #33b5ff);
+  transform: translate(-50%, -50%) scale(1.15);
+  box-shadow: 0 0 12px rgba(0, 163, 255, 0.6);
+}
+
+/* User selection prevention during drag */
+.timeline-trim-handle.dragging {
+  user-select: none;
+}

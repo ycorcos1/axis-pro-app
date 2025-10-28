@@ -2,12 +2,11 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "target": "ES2020",
-    "module": "ES2020",
+    "module": "ESNext",
     "moduleResolution": "node",
     "outDir": "./dist/preload",
-    "rootDir": "./app/preload"
+    "rootDir": "./app"
   },
-  "include": ["app/preload/**/*"],
+  "include": ["app/preload/**/*", "app/shared/**/*"],
   "exclude": ["app/renderer"]
 }
-

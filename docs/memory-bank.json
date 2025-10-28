@@ -31,35 +31,214 @@
       "id": "media-engine",
       "when": "2025-01-27",
       "what": "Local FFmpeg via child_process.spawn",
-      "why": "Predictable performance, full control (planned PR #4)"
+      "why": "Predictable performance, full control (implemented in PR #4)"
+    },
+    {
+      "id": "ffmpeg-implementation",
+      "when": "2025-01-27",
+      "what": "FFmpeg service with probe (ffprobe) and trimExport (ffmpeg) functions",
+      "why": "Core video processing: extract metadata and perform fast trim/export using stream copy when possible"
+    },
+    {
+      "id": "design-spec",
+      "when": "2025-01-27",
+      "what": "Pro-Studio Minimalist theme with dark palette, CSS custom properties",
+      "why": "Follow Axis Pro Design Specification for consistent UI/UX"
+    },
+    {
+      "id": "layout-structure",
+      "when": "2025-01-27",
+      "what": "5-panel layout: TopBar, MediaLibrary (left), Preview (center), Properties (right), Timeline (bottom)",
+      "why": "Standard video editor layout per design spec"
+    },
+    {
+      "id": "ipc-surface",
+      "when": "2025-01-27",
+      "what": "Type-safe IPC via contextBridge with 4 main APIs: selectFiles, probe, importClips, exportTimeline",
+      "why": "Secure, typed communication between main and renderer processes"
+    },
+    {
+      "id": "timeline-state",
+      "when": "2025-10-27",
+      "what": "Timeline component receives selected clip and trim update handler from App",
+      "why": "Enables two-way data flow: Timeline displays current trim state, updates propagate back to App via callback (implemented in PR #6)"
     }
   ],
   "modules": {
     "mainProcess": {
       "owner": "main",
-      "api": ["createWindow()", "app lifecycle handlers"],
-      "notes": "Manages Electron window creation and app events"
+      "api": ["createWindow()", "app lifecycle handlers", "IPC handlers"],
+      "notes": "Manages Electron window creation, app events, and IPC communication"
     },
     "preload": {
       "owner": "main",
-      "api": ["window.electronAPI.platform"],
-      "notes": "Secure IPC bridge via contextBridge, ready for extension"
+      "api": [
+        "window.electronAPI.platform",
+        "window.electronAPI.selectFiles()",
+        "window.electronAPI.selectSavePath(defaultFilename)",
+        "window.electronAPI.checkFFmpeg()",
+        "window.electronAPI.probe(path)",
+        "window.electronAPI.importClips(paths)",
+        "window.electronAPI.exportTimeline(segment, targetPath, options)"
+      ],
+      "notes": "Secure IPC bridge via contextBridge. Exposes type-safe APIs to renderer. All methods return Promises. selectSavePath added in PR #8 for export file dialog."
+    },
+    "ipcHandlers": {
+      "owner": "main",
+      "api": [
+        "select-files: Opens file dialog for MP4/MOV selection",
+        "select-save-path: Opens save dialog for export destination (PR #8)",
+        "check-ffmpeg: Returns FFmpeg/FFprobe availability status",
+        "probe: Returns MediaInfo for a file using ffprobe",
+        "import-clips: Converts file paths to Clip objects with real metadata",
+        "export-timeline: Exports timeline segment to MP4 using ffmpeg"
+      ],
+      "notes": "IPC handlers registered in main.ts. FFmpeg integration completed in PR #4. Export dialog added in PR #8."
+    },
+    "ffmpegService": {
+      "owner": "main",
+      "api": [
+        "probe(filePath): Returns MediaInfo with duration, dimensions, fps, codec, bitrate",
+        "trimExport(inputPath, inMs, outMs, outputPath, options?): Exports trimmed video segment",
+        "checkFFmpegAvailability(): Returns binary availability status"
+      ],
+      "notes": "Uses spawn to invoke ffmpeg/ffprobe binaries. Handles both dev and production paths via process.resourcesPath. Defaults to -c copy (stream copy) for fast exports, falls back to re-encode if needed. Located in app/main/ffmpegService.ts"
+    },
+    "types": {
+      "owner": "shared",
+      "api": [
+        "Clip",
+        "MediaInfo",
+        "TimelineSegment",
+        "ExportOptions",
+        "ExportResult"
+      ],
+      "notes": "Shared TypeScript types for IPC contract. Located in app/shared/types.ts"
+    },
+    "theme": {
+      "owner": "renderer",
+      "api": "CSS custom properties in theme.css",
+      "notes": "Design tokens for colors, typography, spacing, transitions per Axis Pro spec"
+    },
+    "topbar": {
+      "owner": "renderer",
+      "api": ["<TopBar />"],
+      "notes": "Main navigation and menu bar with app branding. Includes IPC test button for PR #3 verification."
+    },
+    "mediaLibrary": {
+      "owner": "renderer",
+      "api": ["<MediaLibrary />"],
+      "notes": "Left panel for imported media files (ready for drag-drop)"
+    },
+    "previewPanel": {
+      "owner": "renderer",
+      "api": ["<PreviewPanel />"],
+      "notes": "Center panel for video preview and playback controls"
+    },
+    "timeline": {
+      "owner": "renderer",
+      "api": [
+        "<Timeline clip={Clip|null} onUpdateTrim={(clipId, inMs, outMs) => void} />"
+      ],
+      "notes": "Bottom panel for timeline editing with trim handles. Displays selected clip with full duration background and active trim region. Draggable in/out handles adjust trim points (inMs/outMs). Zoom controls scale timeline (25%-400%). Enforces 100ms minimum clip length. Real-time updates via onUpdateTrim callback. Implemented in PR #6."
+    },
+    "propertiesPanel": {
+      "owner": "renderer",
+      "api": ["<PropertiesPanel />"],
+      "notes": "Right panel for clip properties and export settings"
     }
   },
   "todos": [
     "PR #1: ✅ Initialize Electron + React skeleton - COMPLETED",
-    "PR #2: Design tokens and layout frame",
-    "PR #3: IPC surface setup",
-    "PR #4: FFmpeg service implementation"
+    "PR #2: ✅ Design tokens and layout frame - COMPLETED",
+    "PR #3: ✅ IPC surface setup - COMPLETED",
+    "PR #4: ✅ FFmpeg service implementation - COMPLETED",
+    "PR #5: ✅ Media import and library view - COMPLETED",
+    "PR #6: ✅ Timeline track + trim handles - COMPLETED",
+    "PR #7: ✅ Preview player - COMPLETED",
+    "PR #8: ✅ Export MP4 - COMPLETED",
+    "PR #9: ✅ Dashboard - COMPLETED",
+    "PR #10: ✅ UX polish - COMPLETED",
+    "PR #11: ✅ Project save/load - COMPLETED",
+    "PR #12: Packaging for macOS (.dmg)",
+    "PR #13: Submission prep"
   ],
-  "current_pr": "PR #1 - Initialize Electron + React app skeleton - COMPLETED",
+  "current_pr": "PR #11 - Project Save/Load - COMPLETED",
   "completed_prs": [
     {
       "pr": "#1",
       "title": "Initialize Electron + React app skeleton",
       "completed": "2025-01-27",
       "branch": "feature/init-electron-react"
+    },
+    {
+      "pr": "#2",
+      "title": "Design tokens, base theme, and layout frame",
+      "completed": "2025-01-27",
+      "branch": "feature/ui-shell-and-theme"
+    },
+    {
+      "pr": "#3",
+      "title": "IPC Surface (secure)",
+      "completed": "2025-01-27",
+      "branch": "feature/ipc-surface",
+      "summary": "Implemented secure IPC bridge with contextBridge. Added type-safe APIs: selectFiles, probe, importClips, exportTimeline. Created shared TypeScript types (Clip, MediaInfo, etc.). IPC handlers ready for FFmpeg integration in PR #4."
+    },
+    {
+      "pr": "#4",
+      "title": "FFmpeg Service (probe + trim/export)",
+      "completed": "2025-01-27",
+      "branch": "feature/ffmpeg-service",
+      "summary": "Implemented complete FFmpeg service module with probe and trimExport functions. Probe uses ffprobe to extract video metadata (duration, dimensions, fps, codec, bitrate). TrimExport uses ffmpeg with -c copy for fast stream copying, with re-encode fallback. Added checkFFmpegAvailability helper. Integrated service into IPC handlers (probe, import-clips, export-timeline). All handlers now use real FFmpeg processing instead of placeholders."
+    },
+    {
+      "pr": "#5",
+      "title": "Media Import + Library View",
+      "completed": "2025-01-27",
+      "branch": "feature/import-and-library",
+      "summary": "Implemented complete media import workflow. Added state management in App.tsx for clips and selection. Implemented drag-and-drop file import with visual feedback. Added file picker integration via TopBar Import button. MediaLibrary component now displays imported clips with filename, duration (MM:SS format), and resolution. Styled clip cards with hover effects and selection states per design spec (subtle glow, accent outline). Users can now import MP4/MOV files via drag-drop or Import button, and clips appear in the library with metadata."
+    },
+    {
+      "pr": "#6",
+      "title": "Timeline Track + Trim Handles",
+      "completed": "2025-10-27",
+      "branch": "feature/timeline-single-track",
+      "summary": "Implemented interactive timeline editing with draggable trim handles. Timeline component now receives selected clip from App and displays it with full duration background (gray) and active trim region (accent color overlay). Added draggable in/out handles that update clip.inMs and clip.outMs via onUpdateTrim callback. Handles enforce constraints: minimum 100ms clip length, cannot drag beyond clip boundaries. Implemented zoom controls (25%-400%) for precise editing. Added hover and drag visual states per design spec (grip scaling, color brightening, glow effects). State synchronization works correctly - trim values persist per clip when switching between clips. Timeline track displays clip filename and scales clip width based on duration and zoom level."
+    },
+    {
+      "pr": "#7",
+      "title": "Preview Player",
+      "completed": "2025-10-27",
+      "branch": "feature/preview-player",
+      "summary": "Implemented complete video playback and scrubbing support in PreviewPanel. HTML5 video player respects trim boundaries (clip.inMs to clip.outMs). Playback starts at in point, automatically stops at out point, and resets. Added play/pause toggle button with spacebar keyboard shortcut. Implemented interactive scrubber with click-to-seek and drag-to-seek functionality. Time display shows current position and duration in MM:SS format. Added skip-to-start and skip-to-end controls. Scrubber features glassmorphism overlay with accent-colored progress bar and draggable handle. All controls disabled when no clip selected. Preview updates in real-time when trim points change in Timeline. Proper event listener cleanup prevents memory leaks."
+    },
+    {
+      "pr": "#8",
+      "title": "Export MP4",
+      "completed": "2025-10-27",
+      "branch": "feature/export-mp4",
+      "summary": "Implemented complete export workflow for trimmed videos. Added selectSavePath IPC handler with save file dialog (defaults to originalname-trimmed.mp4). Export button in TopBar now functional - disabled when no clip selected, shows 'Exporting...' state during export. Added handleExport in App.tsx that creates TimelineSegment from selected clip's trim points and calls exportTimeline IPC. FFmpeg trimExport service exports video with stream copy (-c copy) for fast exports. Added keyboard shortcuts: ⌘/Ctrl+I for Import, ⌘/Ctrl+E for Export. Export button shows loading state and prevents multiple simultaneous exports. Verified exported files match trim selection and are playable."
+    },
+    {
+      "pr": "#9",
+      "title": "Dashboard (Projects Grid)",
+      "completed": "2025-10-27",
+      "branch": "feature/dashboard",
+      "summary": "Implemented complete dashboard screen with project management. Added project data models (Project, ProjectClip, Segment, ProjectMetadata) in shared types. Created projectIO service with functions for listing, creating, loading, saving, renaming, duplicating, and deleting projects. Implemented thumbnail service using FFmpeg to generate 960x540 project thumbnails. Added IPC handlers for all project operations. Created Dashboard component with responsive grid layout, inline rename, context menu (Open, Rename, Duplicate, Delete), and relative time formatting. Added view routing (dashboard ↔ editor) with back button. Projects saved to ~/AxisPro/projects/{id}/project.json with thumbnails."
+    },
+    {
+      "pr": "#10",
+      "title": "UX Polish (Toast Notifications)",
+      "completed": "2025-10-27",
+      "branch": "feature/ux-polish",
+      "summary": "Implemented toast notification system for user feedback. Created Toast component with success, warning, error, and info variants. Added auto-dismiss functionality with configurable duration. Toast notifications appear for save operations, export results, and errors. Includes smooth animations and proper stacking. Integrated into App.tsx for global state management."
+    },
+    {
+      "pr": "#11",
+      "title": "Project Persistence (Save/Load)",
+      "completed": "2025-10-27",
+      "branch": "feature/project-save-load",
+      "summary": "Implemented complete project persistence workflow. Added handleSaveProject function in App.tsx that converts editing clips/segments to project format and saves to disk. Project state includes clips, segments, trim points, and stats. Save operation updates project.json, generates thumbnail if missing, and updates lastSaved timestamp. Load functionality hydrates project clips into editing state. Auto-save integration with manual save option. Projects remain synchronized between editor and dashboard. Save button in TopBar triggers manual save with visual feedback."
     }
   ]
 }
-

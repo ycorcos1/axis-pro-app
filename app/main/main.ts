@@ -1,55 +1,492 @@
 /**
  * Main Electron process for Axis Pro
- * @mem ref: arch-fwk
+ * @mem ref: arch-fwk, ipc-surface
  * Handles window creation, application lifecycle, and IPC communication
  */
 
-import { app, BrowserWindow } from 'electron';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  dialog,
+  protocol,
+  safeStorage,
+} from "electron";
+import path from "path";
+import fs from "fs";
+import { fileURLToPath } from "url";
+import type {
+  Clip,
+  MediaInfo,
+  TimelineSegment,
+  ExportOptions,
+  ExportResult,
+  Project,
+  ProjectMetadata,
+} from "../shared/types.js";
+import * as ffmpegService from "./ffmpegService.js";
+import * as projectIO from "./projectIO.js";
+import * as thumbService from "./thumbService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let mainWindow: BrowserWindow | null = null;
 
+// Register protocol schemes as privileged BEFORE app is ready
+// This is required for the custom protocols to work with video elements and images
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "local-video",
+    privileges: {
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: true,
+      stream: true, // Important for video streaming
+    },
+  },
+  {
+    scheme: "local-image",
+    privileges: {
+      secure: true,
+      supportFetchAPI: true,
+      bypassCSP: true,
+    },
+  },
+]);
+
+// Register custom protocols for local files
+// This allows the renderer to access local video and image files safely
+function registerLocalFileProtocol() {
+  // Use interceptFileProtocol for better streaming support with video elements
+  protocol.interceptFileProtocol("local-video", (request, callback) => {
+    const url = request.url.replace("local-video://", "");
+    try {
+      const decodedPath = decodeURIComponent(url);
+      console.log("[Protocol] Serving video file:", decodedPath);
+      return callback({ path: decodedPath });
+    } catch (error) {
+      console.error("[Protocol] Error handling local-video request:", error);
+      return callback({ error: -2 }); // FILE_NOT_FOUND
+    }
+  });
+
+  // Register protocol for image files (thumbnails)
+  protocol.interceptFileProtocol("local-image", (request, callback) => {
+    const url = request.url.replace("local-image://", "");
+    try {
+      const decodedPath = decodeURIComponent(url);
+      console.log("[Protocol] Serving image file:", decodedPath);
+      return callback({ path: decodedPath });
+    } catch (error) {
+      console.error("[Protocol] Error handling local-image request:", error);
+      return callback({ error: -2 }); // FILE_NOT_FOUND
+    }
+  });
+}
+
 function createWindow() {
   // Create the browser window
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
-    title: 'Axis Pro',
+    title: "Axis Pro",
     webPreferences: {
-      preload: path.join(__dirname, '../preload/preload.js'),
+      preload: path.join(__dirname, "../../preload/preload/preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: false, // Temporarily disable for video loading (will re-enable with better solution)
+      sandbox: false, // Disable sandbox to allow file path access from drag-and-drop
     },
-    backgroundColor: '#121212',
+    backgroundColor: "#121212",
+  });
+
+  console.log("[Main] __dirname:", __dirname);
+  console.log(
+    "[Main] Preload path:",
+    path.join(__dirname, "../../preload/preload/preload.js")
+  );
+
+  // Check if preload file exists
+  const preloadPath = path.join(__dirname, "../../preload/preload/preload.js");
+  if (fs.existsSync(preloadPath)) {
+    console.log("[Main] ✓ Preload file exists");
+  } else {
+    console.error("[Main] ✗ Preload file NOT FOUND");
+  }
+
+  // Listen for console messages to catch preload logs
+  mainWindow.webContents.on("console-message", (event, level, message) => {
+    if (message.includes("[Preload]")) {
+      console.log(`[Main->Preload] ${message}`);
+    }
   });
 
   // Load the app
-  if (process.env.NODE_ENV === 'development') {
-    mainWindow.loadURL('http://localhost:5173');
+  // Always try dev server first when running via npm run dev
+  const isDev = !app.isPackaged;
+
+  if (isDev) {
+    // Try common Vite dev server ports
+    mainWindow.loadURL("http://localhost:5173").catch(() => {
+      mainWindow?.loadURL("http://localhost:5174").catch(() => {
+        mainWindow?.loadURL("http://localhost:5175").catch(() => {
+          console.error("Could not connect to Vite dev server");
+        });
+      });
+    });
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../../dist/renderer/index.html'));
+    mainWindow.loadFile(path.join(__dirname, "../renderer/index.html"));
   }
 }
 
+/**
+ * IPC Handlers
+ * @mem ref: ipc-surface
+ */
+
+// File selection dialog
+ipcMain.handle("select-files", async () => {
+  if (!mainWindow) return [];
+
+  const result = await dialog.showOpenDialog(mainWindow, {
+    properties: ["openFile", "multiSelections"],
+    filters: [
+      { name: "Videos", extensions: ["mp4", "mov", "avi", "mkv", "webm"] },
+    ],
+  });
+
+  return result.canceled ? [] : result.filePaths;
+});
+
+// File save dialog for export
+ipcMain.handle(
+  "select-save-path",
+  async (_event, defaultFilename: string): Promise<string | null> => {
+    if (!mainWindow) return null;
+
+    const result = await dialog.showSaveDialog(mainWindow, {
+      defaultPath: defaultFilename,
+      filters: [{ name: "Video", extensions: ["mp4"] }],
+      properties: ["createDirectory"],
+    });
+
+    return result.canceled ? null : result.filePath;
+  }
+);
+
+// Check FFmpeg availability
+ipcMain.handle("check-ffmpeg", async () => {
+  return await ffmpegService.checkFFmpegAvailability();
+});
+
+// Media probe - returns media metadata
+// Uses ffprobe to extract video file information
+ipcMain.handle(
+  "probe",
+  async (_event, filePath: string): Promise<MediaInfo> => {
+    console.log("[IPC] probe called for:", filePath);
+
+    try {
+      const mediaInfo = await ffmpegService.probe(filePath);
+      console.log("[IPC] probe successful:", mediaInfo);
+      return mediaInfo;
+    } catch (error) {
+      console.error("[IPC] probe failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Import clips - probes files and creates Clip objects
+ipcMain.handle(
+  "import-clips",
+  async (_event, paths: string[]): Promise<Clip[]> => {
+    console.log("[IPC] import-clips called with paths:", paths);
+
+    try {
+      // Probe each file in parallel for better performance
+      const probePromises = paths.map((filePath) =>
+        ffmpegService.probe(filePath)
+      );
+      const mediaInfos = await Promise.all(probePromises);
+
+      // Convert MediaInfo objects to Clip objects
+      const clips: Clip[] = mediaInfos.map((mediaInfo, index) => {
+        const filename = path.basename(mediaInfo.path);
+
+        return {
+          id: `clip-${Date.now()}-${index}`,
+          path: mediaInfo.path,
+          filename,
+          duration: mediaInfo.duration,
+          width: mediaInfo.width,
+          height: mediaInfo.height,
+          inMs: 0,
+          outMs: mediaInfo.duration,
+        };
+      });
+
+      console.log(
+        "[IPC] import-clips successful:",
+        clips.length,
+        "clips imported"
+      );
+      return clips;
+    } catch (error) {
+      console.error("[IPC] import-clips failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Generate thumbnail for a clip
+ipcMain.handle(
+  "generate-clip-thumbnail",
+  async (_event, clipPath: string, clipId: string): Promise<string | null> => {
+    console.log("[IPC] generate-clip-thumbnail called:", clipId);
+
+    try {
+      // Generate thumbnail path in user cache
+      const userDataPath = app.getPath("userData");
+      const thumbsDir = path.join(userDataPath, "thumbnails");
+      await import("fs/promises").then((fs) =>
+        fs.mkdir(thumbsDir, { recursive: true })
+      );
+      const thumbPath = path.join(thumbsDir, `${clipId}.jpg`);
+
+      // Generate thumbnail using thumbService
+      await thumbService.generateThumbnail(clipPath, thumbPath);
+
+      console.log("[IPC] generate-clip-thumbnail successful:", thumbPath);
+      return thumbPath;
+    } catch (error) {
+      console.error("[IPC] generate-clip-thumbnail failed:", error);
+      return null;
+    }
+  }
+);
+
+// Export timeline segment
+// Uses FFmpeg to trim and export video
+ipcMain.handle(
+  "export-timeline",
+  async (
+    _event,
+    segment: TimelineSegment,
+    targetPath: string,
+    options?: ExportOptions
+  ): Promise<ExportResult> => {
+    console.log("[IPC] export-timeline called");
+    console.log("  Segment:", segment);
+    console.log("  Target:", targetPath);
+    console.log("  Options:", options);
+
+    try {
+      await ffmpegService.trimExport(
+        segment.clipPath,
+        segment.inMs,
+        segment.outMs,
+        targetPath,
+        options
+      );
+
+      const exportResult: ExportResult = {
+        success: true,
+        outputPath: targetPath,
+        duration: segment.outMs - segment.inMs,
+      };
+
+      console.log("[IPC] export-timeline successful:", exportResult);
+      return exportResult;
+    } catch (error) {
+      console.error("[IPC] export-timeline failed:", error);
+
+      return {
+        success: false,
+        outputPath: targetPath,
+        error: error instanceof Error ? error.message : "Unknown error",
+        duration: segment.outMs - segment.inMs,
+      };
+    }
+  }
+);
+
+/**
+ * Project IPC Handlers
+ * @mem ref: pr9-dashboard
+ */
+
+// List all projects
+ipcMain.handle("list-projects", async (): Promise<ProjectMetadata[]> => {
+  console.log("[IPC] list-projects called");
+
+  try {
+    const projects = await projectIO.listProjects();
+    console.log(`[IPC] list-projects successful: ${projects.length} projects`);
+    return projects;
+  } catch (error) {
+    console.error("[IPC] list-projects failed:", error);
+    return [];
+  }
+});
+
+// Create a new project
+ipcMain.handle(
+  "create-project",
+  async (_event, title: string): Promise<Project> => {
+    console.log("[IPC] create-project called with title:", title);
+
+    try {
+      const project = await projectIO.createProject(title);
+      console.log("[IPC] create-project successful:", project.id);
+      return project;
+    } catch (error) {
+      console.error("[IPC] create-project failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Load a project
+ipcMain.handle(
+  "load-project",
+  async (_event, projectId: string): Promise<Project | null> => {
+    console.log("[IPC] load-project called:", projectId);
+
+    try {
+      const project = await projectIO.loadProject(projectId);
+      console.log(
+        "[IPC] load-project successful:",
+        project ? project.id : "not found"
+      );
+      return project;
+    } catch (error) {
+      console.error("[IPC] load-project failed:", error);
+      return null;
+    }
+  }
+);
+
+// Save a project
+ipcMain.handle(
+  "save-project",
+  async (_event, project: Project): Promise<void> => {
+    console.log("[IPC] save-project called:", project.id);
+
+    try {
+      await projectIO.saveProject(project);
+      console.log("[IPC] save-project successful");
+    } catch (error) {
+      console.error("[IPC] save-project failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Rename a project
+ipcMain.handle(
+  "rename-project",
+  async (_event, projectId: string, newTitle: string): Promise<void> => {
+    console.log("[IPC] rename-project called:", projectId, newTitle);
+
+    try {
+      await projectIO.renameProject(projectId, newTitle);
+      console.log("[IPC] rename-project successful");
+    } catch (error) {
+      console.error("[IPC] rename-project failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Duplicate a project
+ipcMain.handle(
+  "duplicate-project",
+  async (_event, projectId: string): Promise<Project> => {
+    console.log("[IPC] duplicate-project called:", projectId);
+
+    try {
+      const newProject = await projectIO.duplicateProject(projectId);
+      console.log("[IPC] duplicate-project successful:", newProject.id);
+      return newProject;
+    } catch (error) {
+      console.error("[IPC] duplicate-project failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Delete a project
+ipcMain.handle(
+  "delete-project",
+  async (_event, projectId: string): Promise<void> => {
+    console.log("[IPC] delete-project called:", projectId);
+
+    try {
+      await projectIO.deleteProject(projectId);
+      console.log("[IPC] delete-project successful");
+    } catch (error) {
+      console.error("[IPC] delete-project failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Generate project thumbnail
+ipcMain.handle(
+  "generate-project-thumbnail",
+  async (_event, projectId: string, videoPath: string): Promise<void> => {
+    console.log("[IPC] generate-project-thumbnail called:", projectId);
+
+    try {
+      await thumbService.generateProjectThumbnail(projectId, videoPath);
+      console.log("[IPC] generate-project-thumbnail successful");
+    } catch (error) {
+      console.error("[IPC] generate-project-thumbnail failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Handle file path extraction from dropped files
+ipcMain.on("get-file-path", (event, channel: string, file: any) => {
+  console.log("[IPC] get-file-path called for file:", file);
+
+  try {
+    // In Electron, dropped files should have a path property
+    const path = file.path;
+    console.log("[IPC] Extracted path:", path);
+
+    if (path) {
+      event.sender.send(channel, path);
+    } else {
+      console.error("[IPC] No path found in file object");
+      event.sender.send(channel, "");
+    }
+  } catch (error) {
+    console.error("[IPC] Error extracting file path:", error);
+    event.sender.send(channel, "");
+  }
+});
+
 // App event handlers
 app.whenReady().then(() => {
+  // Register custom protocol before creating window
+  registerLocalFileProtocol();
+
   createWindow();
 
-  app.on('activate', () => {
+  app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
   });
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") {
     app.quit();
   }
 });
-

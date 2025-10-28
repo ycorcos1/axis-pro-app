@@ -1,0 +1,114 @@
+/**
+ * Axis Pro Design Tokens
+ * @mem ref: design-spec
+ * Color, typography, and spacing tokens per Axis Pro Design Specification
+ */
+
+:root {
+  /* Colors - Pro-Studio Minimalist Dark Palette */
+  --color-bg-primary: #121212; /* Matte black background */
+  --color-bg-surface: #1e1e1e; /* Surface/elevated panels */
+  --color-accent: #007aff; /* macOS blue accent */
+  --color-accent-alt: #00a3ff; /* Cyan accent alternative */
+  --color-text-primary: #f2f2f2; /* Primary text and icons */
+  --color-text-secondary: #a8a8a8; /* Secondary text */
+  --color-text-muted: #6e6e6e; /* Muted text */
+
+  /* Border and selection */
+  --color-border: rgba(242, 242, 242, 0.1);
+  --color-border-hover: rgba(242, 242, 242, 0.15);
+  --color-selection: var(--color-accent);
+
+  /* Shadows */
+  --shadow-soft: 0 2px 10px rgba(0, 0, 0, 0.4);
+  --shadow-hover: 0 4px 16px rgba(0, 0, 0, 0.5);
+
+  /* Typography */
+  --font-family: -apple-system, "Inter", "SF Pro Display", BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --font-size-xs: 11px;
+  --font-size-sm: 13px;
+  --font-size-base: 14px;
+  --font-size-lg: 16px;
+  --font-size-xl: 20px;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+
+  /* Spacing */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 12px;
+  --spacing-lg: 16px;
+  --spacing-xl: 24px;
+  --spacing-2xl: 32px;
+
+  /* Border Radius */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+
+  /* Transitions */
+  --transition-fast: all 0.15s ease-in-out;
+  --transition-base: all 0.2s ease-in-out;
+  --transition-slow: all 0.3s ease-in-out;
+
+  /* Layout dimensions */
+  --topbar-height: 48px;
+  --sidebar-width: 280px;
+  --properties-width: 300px;
+  --timeline-height: 200px;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-family);
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-normal);
+  color: var(--color-text-primary);
+  background: var(--color-bg-primary);
+  overflow: hidden;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Utility classes */
+.transition-fast {
+  transition: var(--transition-fast);
+}
+
+.transition-base {
+  transition: var(--transition-base);
+}
+
+.hover-glow {
+  transition: var(--transition-fast);
+}
+
+.hover-glow:hover {
+  filter: brightness(1.05);
+}
+
+/* Selection outline */
+.selected {
+  outline: 2px solid var(--color-selection);
+  outline-offset: -2px;
+}
+
+/* Focus states */
+button:focus,
+input:focus {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--color-accent);
+}
