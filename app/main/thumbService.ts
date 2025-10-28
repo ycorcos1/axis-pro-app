@@ -9,6 +9,7 @@ import path from "path";
 import { app } from "electron";
 import fs from "fs/promises";
 import { getProjectThumbPath, loadProject, saveProject } from "./projectIO.js";
+import { probe } from "./ffmpegService.js";
 
 /**
  * Get the path to bundled ffmpeg binary
@@ -88,16 +89,26 @@ export async function generateThumbnail(
 
 /**
  * Generate thumbnail for a project from its first clip
+ * Skips thumbnail generation for audio-only files
  * @param projectId - project ID
  * @param firstClipPath - path to first video clip
  */
 export async function generateProjectThumbnail(
   projectId: string,
   firstClipPath: string
-): Promise<string> {
-  const thumbPath = getProjectThumbPath(projectId);
-
+): Promise<string | null> {
   try {
+    // First, probe the file to check if it has video
+    const mediaInfo = await probe(firstClipPath);
+    
+    // If file has no video (audio-only), skip thumbnail generation
+    if (mediaInfo.width === 0 || mediaInfo.height === 0) {
+      console.log(`[ThumbService] Skipping thumbnail for audio-only file: ${firstClipPath}`);
+      return null;
+    }
+
+    const thumbPath = getProjectThumbPath(projectId);
+    
     await generateThumbnail(firstClipPath, thumbPath);
     console.log(`[ThumbService] Generated project thumbnail: ${thumbPath}`);
 
@@ -115,7 +126,8 @@ export async function generateProjectThumbnail(
       `[ThumbService] Failed to generate thumbnail for project ${projectId}:`,
       error
     );
-    throw error;
+    // Don't throw - just return null to indicate no thumbnail
+    return null;
   }
 }
 
