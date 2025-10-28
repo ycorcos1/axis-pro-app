@@ -61,6 +61,8 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
     if (mode === "movie") {
       setEnableWebcam(true);
       setEnableMic(true);
+      // Initialize webcam preview for movie mode
+      initializeWebcamPreview();
     } else if (mode === "audio") {
       setEnableWebcam(false);
       setEnableMic(true);
@@ -98,6 +100,35 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
     } catch (err) {
       console.error("[Recording] Failed to load sources:", err);
       setError("Failed to load capture sources");
+    }
+  };
+
+  /**
+   * Initialize webcam preview for movie mode
+   */
+  const initializeWebcamPreview = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user",
+        },
+        audio: false, // Don't capture audio for preview
+      });
+
+      webcamStreamRef.current = stream;
+
+      // Set video preview
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = stream;
+        videoPreviewRef.current.play();
+      }
+
+      console.log("[Recording] Webcam preview initialized");
+    } catch (err) {
+      console.error("[Recording] Failed to initialize webcam preview:", err);
+      setError("Failed to access webcam. Please check permissions.");
     }
   };
 
@@ -152,26 +183,39 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       // Get webcam stream if enabled (movie mode or screen-camera mode)
       let webcamStream: MediaStream | null = null;
       if (enableWebcam || mode === "movie") {
-        try {
-          webcamStream = await navigator.mediaDevices.getUserMedia({
-            video: {
-              width: { ideal: 1280 },
-              height: { ideal: 720 },
-              facingMode: "user",
-            },
-            audio: false,
-          });
-          webcamStreamRef.current = webcamStream;
-          console.log("[Recording] Webcam stream acquired");
-        } catch (err) {
-          console.error("[Recording] Webcam not available:", err);
-          setError("Failed to access webcam. Please check permissions.");
-          stopAllStreams();
-          return;
+        // For movie mode, reuse the preview stream if available
+        if (mode === "movie" && webcamStreamRef.current) {
+          webcamStream = webcamStreamRef.current;
+          console.log("[Recording] Reusing webcam preview stream");
+        } else {
+          // Otherwise, create a new stream
+          try {
+            webcamStream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                width: { ideal: 1280 },
+                height: { ideal: 720 },
+                facingMode: "user",
+              },
+              audio: false,
+            });
+            webcamStreamRef.current = webcamStream;
+            console.log("[Recording] Webcam stream acquired");
+            
+            // Set up preview if in movie mode and not already playing
+            if (mode === "movie" && videoPreviewRef.current && !videoPreviewRef.current.srcObject) {
+              videoPreviewRef.current.srcObject = webcamStream;
+              videoPreviewRef.current.play();
+            }
+          } catch (err) {
+            console.error("[Recording] Webcam not available:", err);
+            setError("Failed to access webcam. Please check permissions.");
+            stopAllStreams();
+            return;
+          }
         }
       }
 
-      // Get microphone stream if enabled
+      // Get microphone stream if enabled (need fresh stream with audio)
       let micStream: MediaStream | null = null;
       if (enableMic) {
         try {
@@ -250,12 +294,6 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       timerRef.current = window.setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
-
-      // Set up video preview for movie mode
-      if (mode === "movie" && videoPreviewRef.current && webcamStream) {
-        videoPreviewRef.current.srcObject = webcamStream;
-        videoPreviewRef.current.play();
-      }
 
       console.log("[Recording] Recording started");
     } catch (err) {
@@ -497,11 +535,6 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
               muted
               playsInline
             />
-            {!isRecording && (
-              <div className="preview-overlay">
-                <p>Camera preview will appear when recording starts</p>
-              </div>
-            )}
           </div>
         )}
 
