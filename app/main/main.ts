@@ -645,20 +645,28 @@ ipcMain.handle(
 // Set project thumbnail from user-selected image file
 ipcMain.handle(
   "set-project-thumbnail-from-file",
-  async (_event, projectId: string, imagePath: string): Promise<string | null> => {
-    console.log("[IPC] set-project-thumbnail-from-file called:", projectId, imagePath);
+  async (
+    _event,
+    projectId: string,
+    imagePath: string
+  ): Promise<string | null> => {
+    console.log(
+      "[IPC] set-project-thumbnail-from-file called:",
+      projectId,
+      imagePath
+    );
 
     try {
       const fs = await import("fs/promises");
       const path = await import("path");
-      
+
       // Get the project thumbnail path
       const thumbPath = projectIO.getProjectThumbPath(projectId);
-      
+
       // Copy the selected image to the thumbnail location
       await fs.copyFile(imagePath, thumbPath);
       console.log("[IPC] Thumbnail copied to:", thumbPath);
-      
+
       // Update project metadata
       const project = await projectIO.loadProject(projectId);
       if (project) {
@@ -666,11 +674,28 @@ ipcMain.handle(
         await projectIO.saveProject(project);
         console.log("[IPC] Project metadata updated with thumbnail path");
       }
-      
+
       return thumbPath;
     } catch (error) {
       console.error("[IPC] set-project-thumbnail-from-file failed:", error);
       return null;
+    }
+  }
+);
+
+// Show open dialog for file selection
+ipcMain.handle(
+  "show-open-dialog",
+  async (_event, options: any): Promise<string[]> => {
+    console.log("[IPC] show-open-dialog called with options:", options);
+    
+    try {
+      const result = await dialog.showOpenDialog(options);
+      console.log("[IPC] Dialog result:", result);
+      return result.filePaths;
+    } catch (error) {
+      console.error("[IPC] show-open-dialog failed:", error);
+      return [];
     }
   }
 );

@@ -54,6 +54,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
     return ipcRenderer.invoke("import-clips", paths);
   },
 
+  // Show open dialog for file selection
+  showOpenDialog: (options: any): Promise<string[]> => {
+    return ipcRenderer.invoke("show-open-dialog", options);
+  },
+
   // Generate clip thumbnail
   generateClipThumbnail: (
     clipPath: string,
@@ -216,6 +221,7 @@ declare global {
       }>;
       probe: (path: string) => Promise<MediaInfo>;
       importClips: (paths: string[]) => Promise<Clip[]>;
+      showOpenDialog: (options: any) => Promise<string[]>;
       generateClipThumbnail: (
         clipPath: string,
         clipId: string
