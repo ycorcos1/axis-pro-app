@@ -100,15 +100,17 @@ export async function generateProjectThumbnail(
   try {
     // First, probe the file to check if it has video
     const mediaInfo = await probe(firstClipPath);
-    
+
     // If file has no video (audio-only), skip thumbnail generation
     if (mediaInfo.width === 0 || mediaInfo.height === 0) {
-      console.log(`[ThumbService] Skipping thumbnail for audio-only file: ${firstClipPath}`);
+      console.log(
+        `[ThumbService] Skipping thumbnail for audio-only file: ${firstClipPath}`
+      );
       return null;
     }
 
     const thumbPath = getProjectThumbPath(projectId);
-    
+
     await generateThumbnail(firstClipPath, thumbPath);
     console.log(`[ThumbService] Generated project thumbnail: ${thumbPath}`);
 

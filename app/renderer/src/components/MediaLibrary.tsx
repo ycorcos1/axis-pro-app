@@ -77,9 +77,11 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
               );
               onUpdateClipThumbnail(clip.id, thumbnailUrl);
               console.log("[MediaLibrary] Thumbnail updated successfully");
-            } else {
-              console.warn(
-                "[MediaLibrary] Thumbnail path is null or no callback"
+            } else if (!thumbPath) {
+              // Null thumbnail is expected for audio-only files
+              console.log(
+                "[MediaLibrary] No thumbnail generated for clip (likely audio-only):",
+                clip.filename
               );
             }
           } catch (error) {

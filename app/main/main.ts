@@ -429,6 +429,17 @@ ipcMain.handle(
     console.log("[IPC] generate-clip-thumbnail called:", clipId);
 
     try {
+      // First, probe the file to check if it has video
+      const mediaInfo = await ffmpegService.probe(clipPath);
+      
+      // If file has no video (audio-only), skip thumbnail generation
+      if (mediaInfo.width === 0 || mediaInfo.height === 0) {
+        console.log(
+          `[IPC] Skipping thumbnail for audio-only clip: ${clipPath}`
+        );
+        return null;
+      }
+
       // Generate thumbnail path in user cache
       const userDataPath = app.getPath("userData");
       const thumbsDir = path.join(userDataPath, "thumbnails");
