@@ -54,7 +54,7 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
    */
   useEffect(() => {
     loadDesktopSources();
-    
+
     // Set initial options based on mode
     if (mode === "movie") {
       setEnableWebcam(true);
@@ -228,7 +228,11 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       console.log("[Recording] Recording started");
     } catch (err) {
       console.error("[Recording] Failed to start recording:", err);
-      setError(`Failed to start recording: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setError(
+        `Failed to start recording: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
       stopAllStreams();
     }
   };
@@ -290,7 +294,11 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       chunksRef.current = [];
     } catch (err) {
       console.error("[Recording] Failed to process recording:", err);
-      setError(`Failed to save recording: ${err instanceof Error ? err.message : "Unknown error"}`);
+      setError(
+        `Failed to save recording: ${
+          err instanceof Error ? err.message : "Unknown error"
+        }`
+      );
     }
   };
 
@@ -318,7 +326,9 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
   const formatTime = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
-    return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
+    return `${mins.toString().padStart(2, "0")}:${secs
+      .toString()
+      .padStart(2, "0")}`;
   };
 
   return (
@@ -346,7 +356,9 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
               disabled={isRecording}
             >
               {selectedSource
-                ? `${selectedSource.type === "screen" ? "🖥️" : "🪟"} ${selectedSource.name}`
+                ? `${selectedSource.type === "screen" ? "🖥️" : "🪟"} ${
+                    selectedSource.name
+                  }`
                 : "Select Source"}
             </button>
 
@@ -355,7 +367,9 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
                 {sources.map((source) => (
                   <div
                     key={source.id}
-                    className={`source-option ${source.id === selectedSourceId ? "selected" : ""}`}
+                    className={`source-option ${
+                      source.id === selectedSourceId ? "selected" : ""
+                    }`}
                     onClick={() => {
                       setSelectedSourceId(source.id);
                       setShowSourcePicker(false);
@@ -414,7 +428,11 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
             <button
               className="recording-btn start-btn"
               onClick={startRecording}
-              disabled={!projectId || ((mode === "screen" || mode === "screen-camera") && !selectedSourceId)}
+              disabled={
+                !projectId ||
+                ((mode === "screen" || mode === "screen-camera") &&
+                  !selectedSourceId)
+              }
             >
               <span className="record-dot"></span>
               Start Recording
@@ -422,7 +440,10 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
           ) : (
             <>
               <div className="recording-time">{formatTime(recordingTime)}</div>
-              <button className="recording-btn stop-btn" onClick={stopRecording}>
+              <button
+                className="recording-btn stop-btn"
+                onClick={stopRecording}
+              >
                 <span className="stop-square"></span>
                 Stop Recording
               </button>
@@ -438,4 +459,3 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
 };
 
 export default RecordingPanel;
-
