@@ -15,6 +15,7 @@ import type {
   ExportResult,
   Project,
   ProjectMetadata,
+  DesktopSource,
 } from "../shared/types.js";
 
 // Expose secure IPC APIs to renderer
@@ -129,6 +130,23 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getFilePath: (file: File): string => {
     return webUtils.getPathForFile(file);
   },
+
+  // Recording APIs
+  getDesktopSources: (): Promise<DesktopSource[]> => {
+    return ipcRenderer.invoke("get-desktop-sources");
+  },
+
+  remuxRecording: (inputPath: string, outputPath: string): Promise<void> => {
+    return ipcRenderer.invoke("remux-recording", inputPath, outputPath);
+  },
+
+  saveRecordingChunk: (
+    projectId: string,
+    fileName: string,
+    data: ArrayBuffer
+  ): Promise<string> => {
+    return ipcRenderer.invoke("save-recording-chunk", projectId, fileName, data);
+  },
 });
 
 console.log("[Preload] electronAPI exposed successfully!");
@@ -173,6 +191,13 @@ declare global {
         videoPath: string
       ) => Promise<void>;
       sendFileToMain: (file: File) => Promise<string>;
+      getDesktopSources: () => Promise<DesktopSource[]>;
+      remuxRecording: (inputPath: string, outputPath: string) => Promise<void>;
+      saveRecordingChunk: (
+        projectId: string,
+        fileName: string,
+        data: ArrayBuffer
+      ) => Promise<string>;
     };
   }
 }

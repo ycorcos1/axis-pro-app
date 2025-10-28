@@ -287,3 +287,133 @@ export async function checkFFmpegAvailability(): Promise<{
     ffprobePath,
   };
 }
+
+/**
+ * Remux a WebM file to MP4 format
+ * Used after recording to convert MediaRecorder output to standard MP4
+ * Uses stream copy when codecs are compatible, otherwise re-encodes
+ *
+ * @param inputPath - Path to source WebM file
+ * @param outputPath - Path for output MP4 file
+ * @returns Promise<void>
+ */
+export async function remuxWebMToMP4(
+  inputPath: string,
+  outputPath: string
+): Promise<void> {
+  const ffmpegPath = getFFmpegPath();
+
+  console.log("[FFmpeg] Remuxing WebM to MP4");
+  console.log("[FFmpeg] Input:", inputPath);
+  console.log("[FFmpeg] Output:", outputPath);
+
+  return new Promise((resolve, reject) => {
+    // Try stream copy first for speed
+    // If codecs are compatible (VP8/VP9 + Opus), this will work
+    // Otherwise, FFmpeg will fail and we'll re-encode
+    const args = [
+      "-i",
+      inputPath,
+      "-c:v",
+      "copy", // Try to copy video stream
+      "-c:a",
+      "aac", // Convert audio to AAC for MP4 compatibility
+      "-b:a",
+      "192k", // Audio bitrate
+      "-movflags",
+      "+faststart", // Optimize for streaming
+      "-y", // Overwrite output file
+      outputPath,
+    ];
+
+    console.log("[FFmpeg] Running:", ffmpegPath, args.join(" "));
+
+    const ffmpegProcess = spawn(ffmpegPath, args);
+
+    let stderr = "";
+
+    ffmpegProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+      console.log("[FFmpeg]", data.toString().trim());
+    });
+
+    ffmpegProcess.on("close", (code) => {
+      if (code !== 0) {
+        // Stream copy failed, try re-encoding
+        console.log("[FFmpeg] Stream copy failed, re-encoding...");
+        remuxWebMToMP4WithReencode(inputPath, outputPath)
+          .then(resolve)
+          .catch(reject);
+        return;
+      }
+
+      console.log("[FFmpeg] Remux completed successfully");
+      resolve();
+    });
+
+    ffmpegProcess.on("error", (error) => {
+      reject(new Error(`Failed to spawn ffmpeg: ${error.message}`));
+    });
+  });
+}
+
+/**
+ * Remux WebM to MP4 with re-encoding
+ * Fallback when stream copy is not compatible
+ *
+ * @param inputPath - Path to source WebM file
+ * @param outputPath - Path for output MP4 file
+ * @returns Promise<void>
+ */
+async function remuxWebMToMP4WithReencode(
+  inputPath: string,
+  outputPath: string
+): Promise<void> {
+  const ffmpegPath = getFFmpegPath();
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      "-i",
+      inputPath,
+      "-c:v",
+      "libx264", // Re-encode to H.264
+      "-preset",
+      "fast",
+      "-crf",
+      "23", // Good quality
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      "-movflags",
+      "+faststart",
+      "-y",
+      outputPath,
+    ];
+
+    console.log("[FFmpeg] Re-encoding:", ffmpegPath, args.join(" "));
+
+    const ffmpegProcess = spawn(ffmpegPath, args);
+
+    let stderr = "";
+
+    ffmpegProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+      console.log("[FFmpeg]", data.toString().trim());
+    });
+
+    ffmpegProcess.on("close", (code) => {
+      if (code !== 0) {
+        reject(new Error(`ffmpeg re-encode failed with code ${code}: ${stderr}`));
+        return;
+      }
+
+      console.log("[FFmpeg] Re-encode completed successfully");
+      resolve();
+    });
+
+    ffmpegProcess.on("error", (error) => {
+      reject(new Error(`Failed to spawn ffmpeg: ${error.message}`));
+    });
+  });
+}

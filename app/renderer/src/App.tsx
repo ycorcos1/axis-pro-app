@@ -13,6 +13,7 @@ import MediaLibrary from "./components/MediaLibrary";
 import PreviewPanel from "./components/PreviewPanel";
 import Timeline from "./components/Timeline";
 import PropertiesPanel from "./components/PropertiesPanel";
+import RecordingPanel from "./components/RecordingPanel";
 import Toast, { Toast as ToastType } from "./components/Toast";
 import "./styles/theme.css";
 import "./styles/layout.css";
@@ -252,6 +253,24 @@ const App: React.FC = () => {
     setCurrentProjectId(null);
     setClips([]);
     setSelectedClipId(null);
+  };
+
+  /**
+   * Handle recording completion
+   * Auto-import the recorded file to the timeline
+   */
+  const handleRecordingComplete = async (filePath: string) => {
+    try {
+      console.log("[App] Recording complete:", filePath);
+      showToast("Recording saved! Importing to timeline...", "success");
+
+      // Import the recorded file
+      await handleImportClips([filePath]);
+      showToast("Recording imported successfully", "success");
+    } catch (error) {
+      console.error("[App] Failed to import recording:", error);
+      showToast("Failed to import recording", "error");
+    }
   };
 
   /**
@@ -557,6 +576,12 @@ const App: React.FC = () => {
             onRelinkMedia={handleRelinkMedia}
             onUpdateClipThumbnail={handleUpdateClipThumbnail}
             onRemoveClip={handleRemoveClip}
+          />
+          
+          {/* Recording Panel */}
+          <RecordingPanel
+            projectId={currentProjectId}
+            onRecordingComplete={handleRecordingComplete}
           />
         </div>
 

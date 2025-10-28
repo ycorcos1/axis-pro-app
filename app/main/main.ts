@@ -23,10 +23,12 @@ import type {
   ExportResult,
   Project,
   ProjectMetadata,
+  DesktopSource,
 } from "../shared/types.js";
 import * as ffmpegService from "./ffmpegService.js";
 import * as projectIO from "./projectIO.js";
 import * as thumbService from "./thumbService.js";
+import * as recordingService from "./recordingService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -485,6 +487,74 @@ ipcMain.on("get-file-path", (event, channel: string, file: any) => {
     event.sender.send(channel, "");
   }
 });
+
+/**
+ * Recording IPC Handlers
+ * @mem ref: pr13-recording-suite
+ */
+
+// Get available desktop sources (screens and windows)
+ipcMain.handle("get-desktop-sources", async (): Promise<DesktopSource[]> => {
+  console.log("[IPC] get-desktop-sources called");
+
+  try {
+    const sources = await recordingService.getDesktopSources();
+    console.log(`[IPC] get-desktop-sources successful: ${sources.length} sources`);
+    return sources;
+  } catch (error) {
+    console.error("[IPC] get-desktop-sources failed:", error);
+    return [];
+  }
+});
+
+// Remux WebM recording to MP4
+ipcMain.handle(
+  "remux-recording",
+  async (_event, inputPath: string, outputPath: string): Promise<void> => {
+    console.log("[IPC] remux-recording called");
+    console.log("  Input:", inputPath);
+    console.log("  Output:", outputPath);
+
+    try {
+      await ffmpegService.remuxWebMToMP4(inputPath, outputPath);
+      console.log("[IPC] remux-recording successful");
+    } catch (error) {
+      console.error("[IPC] remux-recording failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Save recording chunk (for streaming saves)
+ipcMain.handle(
+  "save-recording-chunk",
+  async (_event, projectId: string, fileName: string, data: ArrayBuffer): Promise<string> => {
+    console.log("[IPC] save-recording-chunk called:", fileName);
+
+    try {
+      const projectDir = projectIO.getProjectPath(projectId);
+      const recordingsDir = path.join(projectDir, "recordings");
+
+      // Ensure recordings directory exists
+      await import("fs/promises").then((fs) =>
+        fs.mkdir(recordingsDir, { recursive: true })
+      );
+
+      const filePath = path.join(recordingsDir, fileName);
+
+      // Append data to file
+      await import("fs/promises").then((fs) =>
+        fs.appendFile(filePath, Buffer.from(data))
+      );
+
+      console.log("[IPC] save-recording-chunk successful:", filePath);
+      return filePath;
+    } catch (error) {
+      console.error("[IPC] save-recording-chunk failed:", error);
+      throw error;
+    }
+  }
+);
 
 // App event handlers
 app.whenReady().then(() => {

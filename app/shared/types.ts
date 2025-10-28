@@ -117,3 +117,50 @@ export interface ProjectMetadata {
   };
   previewThumbPath?: string;
 }
+
+/**
+ * Recording source type
+ */
+export type RecordingSourceType = "screen" | "window";
+
+/**
+ * Desktop capture source (screen or window)
+ */
+export interface DesktopSource {
+  id: string;
+  name: string;
+  type: RecordingSourceType;
+  thumbnail?: string; // base64 data URL
+}
+
+/**
+ * Recording configuration
+ */
+export interface RecordingConfig {
+  sourceId: string; // screen or window ID
+  sourceType: RecordingSourceType;
+  enableWebcam: boolean;
+  enableMicrophone: boolean;
+  webcamDeviceId?: string;
+  micDeviceId?: string;
+}
+
+/**
+ * Recording state during capture
+ */
+export interface RecordingState {
+  isRecording: boolean;
+  isPaused: boolean;
+  durationMs: number;
+  outputPath?: string;
+}
+
+/**
+ * Result from recording operation
+ */
+export interface RecordingResult {
+  success: boolean;
+  outputPath?: string;
+  durationMs?: number;
+  error?: string;
+}

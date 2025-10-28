@@ -4,6 +4,173 @@ This document contains summaries for all completed pull requests.
 
 ---
 
+## PR #13 — Recording Suite (Screen, Webcam, Mic, PiP)
+
+**Branch:** `feature/recording-suite`  
+**Status:** ✅ COMPLETED  
+**Date:** October 28, 2025
+
+### Objective
+
+Implement complete screen/window recording with optional webcam overlay and microphone input per Final PRD.
+
+### What Was Implemented
+
+**Main Process (recordingService.ts):**
+
+- Created `recordingService.ts` using Electron `desktopCapturer` API
+- Implemented `getDesktopSources()` to enumerate screens and windows
+- Returns sources with 320x180 thumbnails for UI selection
+- Handles both screen and window capture types
+
+**FFmpeg Integration (ffmpegService.ts):**
+
+- Added `remuxWebMToMP4(inputPath, outputPath)` function
+- Tries stream copy first for fast conversion (`-c:v copy`, `-c:a aac`)
+- Falls back to re-encode with H.264 if stream copy fails
+- Uses `libx264` preset=fast, crf=23 for quality balance
+- Adds `+faststart` flag for web-optimized MP4
+
+**IPC Handlers (main.ts):**
+
+- `get-desktop-sources`: Lists available capture sources with thumbnails
+- `remux-recording`: Converts WebM recording to MP4 via FFmpeg
+- `save-recording-chunk`: Saves recording data to `~/AxisPro/projects/{id}/recordings/`
+
+**Types (shared/types.ts):**
+
+- `DesktopSource`: Source metadata with id, name, type, thumbnail
+- `RecordingConfig`: Configuration for source, webcam, mic settings
+- `RecordingState`: Runtime state with recording status and duration
+- `RecordingResult`: Result object with success status and file path
+
+**Preload (preload.ts):**
+
+- Exposed `getDesktopSources()` API
+- Exposed `remuxRecording(inputPath, outputPath)` API
+- Exposed `saveRecordingChunk(projectId, fileName, data)` API
+- Updated TypeScript declarations for window.electronAPI
+
+**React Component (RecordingPanel.tsx):**
+
+- Compact HUD design with glassmorphism styling
+- Source picker dropdown with thumbnails for screen/window selection
+- Webcam toggle (📷) and Microphone toggle (🎤)
+- Start Recording button with visual feedback
+- Recording timer with pulsing animation
+- Stop Recording button in red accent
+- Error display for permission issues
+
+**Recording Logic:**
+
+- Uses `navigator.mediaDevices.getUserMedia` with `chromeMediaSourceId` constraint
+- Captures selected desktop source (screen or window)
+- Optionally adds webcam stream (640x480 ideal)
+- Optionally adds microphone audio
+- Combines all streams into single MediaStream
+- Records with `MediaRecorder` (VP8/Opus codecs)
+- Collects data chunks every 1 second
+- Saves to WebM format during recording
+- On stop: converts to MP4 and auto-imports to timeline
+
+**App Integration (App.tsx):**
+
+- Added `handleRecordingComplete()` callback
+- Auto-imports recorded MP4 to timeline via `handleImportClips()`
+- Toast notifications for recording events
+- Integrated RecordingPanel into media library sidebar
+
+**Styling (RecordingPanel.css):**
+
+- Glassmorphism panel with backdrop blur
+- Source picker with thumbnail grid
+- Checkbox toggles with accent color
+- Recording button with glow effects on hover
+- Pulsing timer animation during recording
+- Error message styling with red accent
+
+### Verification
+
+**Build Tests:**
+
+- ✅ `npm run build:main` compiles without errors
+- ✅ `npm run build:renderer` compiles without errors
+- ✅ No TypeScript linter errors
+- ✅ All imports resolve correctly
+
+**Functional Requirements:**
+
+- ✅ Desktop sources enumerated with thumbnails
+- ✅ Screen and window selection works
+- ✅ Webcam toggle functional (optional PiP)
+- ✅ Microphone toggle functional
+- ✅ Start/Stop recording controls work
+- ✅ Recording timer displays MM:SS format
+- ✅ WebM → MP4 remux completes successfully
+- ✅ Recordings saved to `~/AxisPro/projects/{id}/recordings/`
+- ✅ Auto-import to timeline after recording
+- ✅ Toast notifications for user feedback
+
+**Architecture:**
+
+- Hybrid approach: Main provides sources, renderer handles recording
+- MediaRecorder API only available in renderer process
+- DesktopCapturer enumeration requires main process
+- Stream copy optimization for fast remux
+- Re-encode fallback ensures compatibility
+
+### Files Modified
+
+- `app/shared/types.ts` - Added recording types
+- `app/main/recordingService.ts` - NEW: Desktop source enumeration
+- `app/main/ffmpegService.ts` - Added WebM remux functions
+- `app/main/main.ts` - Added recording IPC handlers
+- `app/preload/preload.ts` - Exposed recording APIs
+- `app/renderer/src/components/RecordingPanel.tsx` - NEW: Recording UI
+- `app/renderer/src/components/RecordingPanel.css` - NEW: Recording styles
+- `app/renderer/src/App.tsx` - Integrated recording panel
+- `docs/memory-bank.json` - Updated with recording module docs
+
+### Technical Notes
+
+**Recording Flow:**
+
+1. User selects screen/window from source picker
+2. User toggles webcam/mic options
+3. Click "Start Recording"
+4. Renderer requests media streams:
+   - Desktop: `getUserMedia` with `chromeMediaSourceId`
+   - Webcam: `getUserMedia` with video constraints
+   - Mic: `getUserMedia` with audio constraints
+5. Combine streams into single MediaStream
+6. Start MediaRecorder (VP8/Opus, 2.5 Mbps)
+7. Collect chunks every 1 second
+8. On stop: create Blob, save to WebM file
+9. Remux WebM → MP4 via FFmpeg
+10. Auto-import MP4 to timeline
+
+**Stream Copy Optimization:**
+
+- Try `-c:v copy -c:a aac` first (fast)
+- If incompatible, fall back to `-c:v libx264 -preset fast -crf 23`
+- Always convert audio to AAC for MP4 compatibility
+
+**Permissions:**
+
+- Camera/Microphone permissions requested on first use
+- State persisted by system preferences
+- Errors displayed to user if permissions denied
+
+### Next Steps
+
+- PR #14: Advanced Timeline (multi-track, split, snap, zoom)
+- PR #15: Undo/Redo + Auto-Save
+- PR #16: Text Overlays (manual)
+- PR #17: AI Caption Generation (Whisper + GPT)
+- PR #18: Packaging + GitHub Release
+
+---
+
 ## PR #1 — Initialize Electron + React App Skeleton
 
 **Branch:** `feature/init-electron-react`  
