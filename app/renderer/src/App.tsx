@@ -8,7 +8,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import Dashboard from "./components/Dashboard";
-import TopBar from "./components/TopBar";
+import TopBar, { RecordingMode } from "./components/TopBar";
 import MediaLibrary from "./components/MediaLibrary";
 import PreviewPanel from "./components/PreviewPanel";
 import Timeline from "./components/Timeline";
@@ -615,6 +615,22 @@ const App: React.FC = () => {
     }
   };
 
+  /**
+   * Handle recording mode selection from TopBar menu
+   */
+  const handleRecordingModeSelect = (mode: RecordingMode) => {
+    setRecordingMode(mode);
+    setShowRecordingPanel(true);
+  };
+
+  /**
+   * Handle closing the recording panel
+   */
+  const handleCloseRecordingPanel = () => {
+    setShowRecordingPanel(false);
+    setRecordingMode(null);
+  };
+
   // Get the currently selected clip object
   const selectedClip = clips.find((clip) => clip.id === selectedClipId) || null;
 
@@ -682,6 +698,7 @@ const App: React.FC = () => {
           lastSaved={lastSaved}
           onNewProject={handleNewProject}
           onOpenProject={handleBackToDashboard}
+          onRecordingModeSelect={handleRecordingModeSelect}
         />
       </div>
 

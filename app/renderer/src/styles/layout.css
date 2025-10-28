@@ -17,6 +17,14 @@
   flex-shrink: 0;
 }
 
+/* Recording Panel Container */
+.app-recording-panel {
+  padding: var(--spacing-md);
+  background: var(--color-bg-primary);
+  border-bottom: 1px solid var(--border-color);
+  flex-shrink: 0;
+}
+
 .app-main-content {
   flex: 1;
   display: flex;
