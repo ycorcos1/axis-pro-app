@@ -485,7 +485,11 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       <div className="recording-panel-content">
         {/* Source Selection - Only show for screen modes */}
         {(mode === "screen" || mode === "screen-camera") && (
-          <div className={`recording-source ${showSourcePicker ? "dropdown-open" : ""}`}>
+          <div
+            className={`recording-source ${
+              showSourcePicker ? "dropdown-open" : ""
+            }`}
+          >
             <label>Source:</label>
             <button
               className="source-picker-btn"
@@ -528,11 +532,6 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
                   </div>
                 ))}
               </div>
-            )}
-            
-            {/* Spacer when dropdown is open to push content below */}
-            {showSourcePicker && (
-              <div className="dropdown-spacer" style={{ height: `${Math.min(sources.length * 80 + 16, 336)}px` }} />
             )}
           </div>
         )}

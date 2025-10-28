@@ -105,12 +105,20 @@
   cursor: not-allowed;
 }
 
+/* Source Selection */
+.recording-source {
+  position: relative;
+  margin-bottom: var(--spacing-md);
+}
+
+.recording-source.dropdown-open {
+  margin-bottom: 0;
+}
+
 /* Source Picker Dropdown */
 .source-picker-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
+  position: relative;
+  margin-top: 4px;
   background: var(--panel-bg);
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
@@ -122,9 +130,7 @@
 }
 
 .dropdown-spacer {
-  width: 100%;
-  margin-bottom: var(--spacing-lg);
-  pointer-events: none;
+  display: none;
 }
 
 .source-option {
