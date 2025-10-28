@@ -642,6 +642,39 @@ ipcMain.handle(
   }
 );
 
+// Set project thumbnail from user-selected image file
+ipcMain.handle(
+  "set-project-thumbnail-from-file",
+  async (_event, projectId: string, imagePath: string): Promise<string | null> => {
+    console.log("[IPC] set-project-thumbnail-from-file called:", projectId, imagePath);
+
+    try {
+      const fs = await import("fs/promises");
+      const path = await import("path");
+      
+      // Get the project thumbnail path
+      const thumbPath = projectIO.getProjectThumbPath(projectId);
+      
+      // Copy the selected image to the thumbnail location
+      await fs.copyFile(imagePath, thumbPath);
+      console.log("[IPC] Thumbnail copied to:", thumbPath);
+      
+      // Update project metadata
+      const project = await projectIO.loadProject(projectId);
+      if (project) {
+        project.previewThumbPath = thumbPath;
+        await projectIO.saveProject(project);
+        console.log("[IPC] Project metadata updated with thumbnail path");
+      }
+      
+      return thumbPath;
+    } catch (error) {
+      console.error("[IPC] set-project-thumbnail-from-file failed:", error);
+      return null;
+    }
+  }
+);
+
 // Handle file path extraction from dropped files
 ipcMain.on("get-file-path", (event, channel: string, file: any) => {
   console.log("[IPC] get-file-path called for file:", file);

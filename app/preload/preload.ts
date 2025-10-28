@@ -111,6 +111,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
     );
   },
 
+  setProjectThumbnailFromFile: (
+    projectId: string,
+    imagePath: string
+  ): Promise<string | null> => {
+    return ipcRenderer.invoke(
+      "set-project-thumbnail-from-file",
+      projectId,
+      imagePath
+    );
+  },
+
   // Send file to main process to extract path
   sendFileToMain: (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -225,6 +236,10 @@ declare global {
         projectId: string,
         videoPath: string
       ) => Promise<void>;
+      setProjectThumbnailFromFile: (
+        projectId: string,
+        imagePath: string
+      ) => Promise<string | null>;
       sendFileToMain: (file: File) => Promise<string>;
       getDesktopSources: () => Promise<DesktopSource[]>;
       remuxRecording: (inputPath: string, outputPath: string) => Promise<void>;

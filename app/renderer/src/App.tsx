@@ -606,23 +606,32 @@ const App: React.FC = () => {
    * Handle updating project thumbnail from first clip
    */
   const handleUpdateProjectThumbnail = async (projectId: string) => {
-    if (clips.length === 0) {
-      showToast("No clips available to generate thumbnail", "error");
-      return;
-    }
-
     try {
-      const firstClip = clips[0];
-      const thumbnailPath = await window.electronAPI.generateProjectThumbnail(
+      // Let user select an image file
+      const filePaths = await window.electronAPI.showOpenDialog({
+        properties: ['openFile'],
+        filters: [
+          { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp'] }
+        ]
+      });
+
+      if (!filePaths || filePaths.length === 0) {
+        return; // User cancelled
+      }
+
+      const selectedImagePath = filePaths[0];
+      
+      // Generate thumbnail by copying the selected image
+      const thumbnailPath = await window.electronAPI.setProjectThumbnailFromFile(
         projectId,
-        firstClip.path
+        selectedImagePath
       );
       
       if (thumbnailPath) {
         setProjectThumbnailUrl(`local-image://${thumbnailPath}`);
         showToast("Thumbnail updated", "success");
       } else {
-        showToast("Could not generate thumbnail (audio-only file?)", "info");
+        showToast("Failed to set thumbnail", "error");
       }
     } catch (error) {
       console.error("[App] Failed to update project thumbnail:", error);
