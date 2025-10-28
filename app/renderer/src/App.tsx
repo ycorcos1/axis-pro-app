@@ -72,10 +72,15 @@ const App: React.FC = () => {
 
   /**
    * Show a toast notification
+   * Limits to max 3 toasts visible at once
    */
   const showToast = (message: string, type: ToastType["type"] = "info") => {
     const id = `toast-${Date.now()}`;
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => {
+      // Keep only the last 2 toasts and add the new one (max 3 visible)
+      const recentToasts = prev.slice(-2);
+      return [...recentToasts, { id, message, type }];
+    });
   };
 
   /**
@@ -275,11 +280,12 @@ const App: React.FC = () => {
   const handleRecordingComplete = async (filePath: string) => {
     try {
       console.log("[App] Recording complete:", filePath);
-      showToast("Recording saved! Importing to timeline...", "success");
 
       // Import the recorded file
       await handleImportClips([filePath]);
-      showToast("Recording imported successfully", "success");
+      
+      // Show single success toast after import completes
+      showToast("Recording saved and imported successfully!", "success");
 
       // Hide recording panel after successful completion
       setShowRecordingPanel(false);
