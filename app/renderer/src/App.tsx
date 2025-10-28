@@ -555,6 +555,27 @@ const App: React.FC = () => {
   };
 
   /**
+   * Handle renaming a clip
+   * Note: This only updates the display name, not the actual file path
+   */
+  const handleRenameClip = async (clipId: string, newFilename: string) => {
+    const updatedClips = clips.map((clip) => {
+      if (clip.id === clipId) {
+        return { ...clip, filename: newFilename };
+      }
+      return clip;
+    });
+
+    setClips(updatedClips);
+    showToast("Clip renamed", "success");
+
+    // Auto-save after rename
+    if (currentProjectId) {
+      await handleSaveProject(false, updatedClips);
+    }
+  };
+
+  /**
    * Handle project title update
    */
   const handleUpdateProjectTitle = async (
@@ -757,6 +778,7 @@ const App: React.FC = () => {
             onRelinkMedia={handleRelinkMedia}
             onUpdateClipThumbnail={handleUpdateClipThumbnail}
             onRemoveClip={handleRemoveClip}
+            onRenameClip={handleRenameClip}
           />
         </div>
 

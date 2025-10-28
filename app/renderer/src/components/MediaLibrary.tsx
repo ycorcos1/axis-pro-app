@@ -29,6 +29,7 @@ interface MediaLibraryProps {
   onRelinkMedia?: (clipId: string) => void;
   onUpdateClipThumbnail?: (clipId: string, thumbnailUrl: string) => void;
   onRemoveClip?: (clipId: string) => void;
+  onRenameClip?: (clipId: string, newFilename: string) => void;
 }
 
 const MediaLibrary: React.FC<MediaLibraryProps> = ({
@@ -39,6 +40,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
   onRelinkMedia,
   onUpdateClipThumbnail,
   onRemoveClip,
+  onRenameClip,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -47,6 +49,8 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
     x: number;
     y: number;
   } | null>(null);
+  const [renamingClipId, setRenamingClipId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState<string>("");
 
   // Generate thumbnails for new clips
   React.useEffect(() => {
@@ -231,6 +235,38 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
     handleContextMenuClose();
   };
 
+  const handleStartRename = (clipId: string) => {
+    const clip = clips.find((c) => c.id === clipId);
+    if (clip) {
+      setRenamingClipId(clipId);
+      setRenameValue(clip.filename);
+    }
+    handleContextMenuClose();
+  };
+
+  const handleRenameSubmit = (clipId: string) => {
+    if (onRenameClip && renameValue.trim()) {
+      onRenameClip(clipId, renameValue.trim());
+    }
+    setRenamingClipId(null);
+    setRenameValue("");
+  };
+
+  const handleRenameCancel = () => {
+    setRenamingClipId(null);
+    setRenameValue("");
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent, clipId: string) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleRenameSubmit(clipId);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleRenameCancel();
+    }
+  };
+
   return (
     <div className="media-library">
       <div className="panel-header">
@@ -315,17 +351,30 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     )}
                   </div>
                   <div className="clip-info">
-                    <div className="clip-filename" title={clip.filename}>
-                      {clip.filename}
-                      {clip.isMissing && (
-                        <span
-                          className="clip-missing-badge"
-                          title="Media file not found"
-                        >
-                          ⚠️
-                        </span>
-                      )}
-                    </div>
+                    {renamingClipId === clip.id ? (
+                      <input
+                        type="text"
+                        className="clip-rename-input"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => handleRenameKeyDown(e, clip.id)}
+                        onBlur={() => handleRenameSubmit(clip.id)}
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <div className="clip-filename" title={clip.filename}>
+                        {clip.filename}
+                        {clip.isMissing && (
+                          <span
+                            className="clip-missing-badge"
+                            title="Media file not found"
+                          >
+                            ⚠️
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="clip-metadata">
                       <span className="clip-duration">
                         {formatDuration(clip.duration)}
@@ -361,6 +410,9 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 Relink Media
               </button>
             )}
+            <button onClick={() => handleStartRename(contextMenuId)}>
+              Rename
+            </button>
             <button onClick={() => handleRevealInFinder(contextMenuId)}>
               Reveal in Finder
             </button>
