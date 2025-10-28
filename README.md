@@ -62,15 +62,15 @@ See [docs/PR_Summaries.md](docs/PR_Summaries.md) for complete implementation det
 
 ### FFmpeg Setup
 
-Axis Pro requires FFmpeg for video processing. Download and install the binaries:
+Axis Pro requires FFmpeg for video processing. Download and install the binaries for your platform:
+
+**macOS:**
 
 1. **Download FFmpeg for macOS**:
-
    - Visit [evermeet.cx/ffmpeg](https://evermeet.cx/ffmpeg/) or [ffmpeg.org](https://ffmpeg.org/download.html)
    - Download both `ffmpeg` and `ffprobe` static binaries
 
 2. **Install binaries**:
-
    ```bash
    # Create directory if it doesn't exist
    mkdir -p resources/ffmpeg/mac
@@ -85,7 +85,6 @@ Axis Pro requires FFmpeg for video processing. Download and install the binaries
    ```
 
 3. **Remove macOS quarantine** (required for unsigned binaries):
-
    ```bash
    xattr -d com.apple.quarantine resources/ffmpeg/mac/ffmpeg
    xattr -d com.apple.quarantine resources/ffmpeg/mac/ffprobe
@@ -95,6 +94,28 @@ Axis Pro requires FFmpeg for video processing. Download and install the binaries
    ```bash
    ./resources/ffmpeg/mac/ffmpeg -version
    ./resources/ffmpeg/mac/ffprobe -version
+   ```
+
+**Windows:**
+
+1. **Download FFmpeg for Windows**:
+   - Visit [www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/) or [ffmpeg.org](https://ffmpeg.org/download.html)
+   - Download `ffmpeg-release-essentials.zip`
+
+2. **Install binaries**:
+   ```bash
+   # Create directory
+   mkdir -p resources/ffmpeg/windows
+
+   # Extract and copy these files to resources/ffmpeg/windows/:
+   # - ffmpeg.exe
+   # - ffprobe.exe
+   ```
+
+3. **Verify installation**:
+   ```bash
+   ./resources/ffmpeg/windows/ffmpeg.exe -version
+   ./resources/ffmpeg/windows/ffprobe.exe -version
    ```
 
 **Note**: The app will display a helpful error message if FFmpeg is not installed.
@@ -120,6 +141,40 @@ Axis Pro requires FFmpeg for video processing. Download and install the binaries
    ```bash
    npm run dev
    ```
+
+### Build from Source
+
+To build a distributable version of the app from source:
+
+1. **Clone and install dependencies** (if you haven't already):
+
+   ```bash
+   git clone <repository-url>
+   cd axis-pro-app
+   npm install
+   ```
+
+2. **Setup FFmpeg binaries** (see FFmpeg Setup section above)
+
+3. **Build for your platform**:
+
+   **macOS:**
+   ```bash
+   npm run build:mac
+   ```
+   Creates: `dist/Axis Pro-0.1.0-arm64.dmg`
+
+   **Windows:**
+   ```bash
+   npm run build:win
+   ```
+   Creates: `dist/Axis Pro Setup 0.1.0.exe`
+
+4. **Install the app**:
+   - **macOS**: Open the DMG and drag to Applications
+   - **Windows**: Run the `.exe` installer
+
+**Note**: You need FFmpeg binaries for your platform in the `resources/ffmpeg/[platform]/` directory before building.
 
 ### Troubleshooting
 
@@ -161,21 +216,33 @@ This will:
 npm run build
 ```
 
-### Package for macOS
+### Package for Distribution
 
+**macOS:**
 ```bash
 npm run pack:mac
 ```
+Creates: `dist/Axis Pro-0.1.0-arm64.dmg`
 
-Creates a distributable `.dmg` file in the `dist` directory.
+**Windows:**
+```bash
+npm run pack:win
+```
+Creates: `dist/Axis Pro Setup 0.1.0.exe`
 
 ### Complete Build (Recommended)
 
+**macOS:**
 ```bash
 npm run build:mac
 ```
-
 Builds the app and packages it into a `.dmg` in one command.
+
+**Windows:**
+```bash
+npm run build:win
+```
+Builds the app and packages it into a `.exe` installer in one command.
 
 ## Distribution
 
