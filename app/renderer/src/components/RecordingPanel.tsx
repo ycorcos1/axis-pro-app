@@ -51,6 +51,8 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
   const micStreamRef = useRef<MediaStream | null>(null);
   const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
   const screenPreviewRef = useRef<HTMLVideoElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   /**
    * Load available desktop sources on mount
@@ -300,18 +302,79 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       // Combine streams
       const combinedStream = new MediaStream();
 
-      // Add screen video track (if screen recording)
-      if (screenStream) {
-        screenStream.getVideoTracks().forEach((track) => {
-          combinedStream.addTrack(track);
-        });
-      }
+      // For screen-camera mode, we need to composite using canvas
+      if (mode === "screen-camera" && screenStream && webcamStream) {
+        console.log("[Recording] Compositing screen + webcam using canvas");
+        
+        // Create canvas for compositing
+        const canvas = document.createElement("canvas");
+        canvasRef.current = canvas;
+        const ctx = canvas.getContext("2d");
+        
+        if (!ctx) {
+          setError("Failed to create canvas context");
+          stopAllStreams();
+          return;
+        }
 
-      // Add webcam video track
-      if (webcamStream) {
-        webcamStream.getVideoTracks().forEach((track) => {
+        // Set canvas size to match screen resolution
+        const screenTrack = screenStream.getVideoTracks()[0];
+        const settings = screenTrack.getSettings();
+        canvas.width = settings.width || 1920;
+        canvas.height = settings.height || 1080;
+
+        // Create video elements for drawing
+        const screenVideo = document.createElement("video");
+        const webcamVideo = document.createElement("video");
+        
+        screenVideo.srcObject = screenStream;
+        webcamVideo.srcObject = webcamStream;
+        
+        await screenVideo.play();
+        await webcamVideo.play();
+
+        // Composite function
+        const drawFrame = () => {
+          // Draw screen (full canvas)
+          ctx.drawImage(screenVideo, 0, 0, canvas.width, canvas.height);
+          
+          // Calculate webcam overlay position (bottom-left, 25% width)
+          const webcamWidth = canvas.width * 0.25;
+          const webcamHeight = webcamWidth * 0.75; // 4:3 aspect ratio
+          const webcamX = 12;
+          const webcamY = canvas.height - webcamHeight - 12;
+          
+          // Draw webcam overlay with border
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.3)";
+          ctx.lineWidth = 2;
+          ctx.strokeRect(webcamX, webcamY, webcamWidth, webcamHeight);
+          ctx.drawImage(webcamVideo, webcamX, webcamY, webcamWidth, webcamHeight);
+          
+          animationFrameRef.current = requestAnimationFrame(drawFrame);
+        };
+        
+        drawFrame();
+        
+        // Get stream from canvas
+        const canvasStream = canvas.captureStream(30); // 30 fps
+        canvasStream.getVideoTracks().forEach((track) => {
           combinedStream.addTrack(track);
         });
+      } else {
+        // For non-PiP modes, add tracks normally
+        // Add screen video track (if screen recording)
+        if (screenStream) {
+          screenStream.getVideoTracks().forEach((track) => {
+            combinedStream.addTrack(track);
+          });
+        }
+
+        // Add webcam video track
+        if (webcamStream) {
+          webcamStream.getVideoTracks().forEach((track) => {
+            combinedStream.addTrack(track);
+          });
+        }
       }
 
       // Add microphone audio track
@@ -478,6 +541,17 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
    * Stop all active media streams
    */
   const stopAllStreams = () => {
+    // Stop animation frame for canvas compositing
+    if (animationFrameRef.current) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    
+    // Clean up canvas
+    if (canvasRef.current) {
+      canvasRef.current = null;
+    }
+    
     if (screenStreamRef.current) {
       screenStreamRef.current.getTracks().forEach((track) => track.stop());
       screenStreamRef.current = null;
