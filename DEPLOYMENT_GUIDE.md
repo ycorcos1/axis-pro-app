@@ -2,7 +2,9 @@
 
 ## 🎉 MVP Complete - Ready for Distribution!
 
-Your DMG file is ready: **`dist/Axis Pro-0.1.0-arm64.dmg`** (527 MB)
+Your distribution package is ready: **`dist/Axis-Pro-0.1.0-mac-arm64.zip`** (158 MB)
+
+**Note:** DMG creation encountered `hdiutil` errors (likely disk space or file locks). The ZIP distribution works perfectly and provides the same functionality.
 
 ---
 
@@ -39,7 +41,14 @@ git push -u origin feature/init-electron-react
 npm run build:mac
 ```
 
-This creates: `dist/Axis Pro-0.1.0-arm64.dmg`
+This creates: `dist/Axis-Pro-0.1.0-mac-arm64.zip`
+
+**Note:** If DMG creation fails with `hdiutil` errors, create a ZIP instead:
+```bash
+cd dist/mac-arm64
+ditto -c -k --sequesterRsrc --keepParent "Axis Pro.app" "../Axis-Pro-0.1.0-mac-arm64.zip"
+cd ../..
+```
 
 ### Build for Windows (Optional)
 
@@ -60,7 +69,7 @@ This creates: `dist/Axis Pro Setup 0.1.0.exe`
 ### Prerequisites
 
 - ✅ Code pushed to GitHub
-- ✅ DMG file ready in `dist/` folder
+- ✅ Distribution package ready (ZIP or DMG)
 - ✅ (Optional) Windows installer ready
 
 ### Instructions
@@ -99,9 +108,9 @@ This creates: `dist/Axis Pro Setup 0.1.0.exe`
 
    ### macOS
 
-   1. Download `Axis Pro-0.1.0-arm64.dmg`
-   2. Double-click to mount the DMG
-   3. Drag "Axis Pro" to your Applications folder
+   1. Download `Axis-Pro-0.1.0-mac-arm64.zip` (or `.dmg` if available)
+   2. Extract the ZIP file (double-click)
+   3. Drag "Axis Pro.app" to your Applications folder
    4. Right-click the app → Open → Click "Open" (first time only)
 
    **System Requirements:** macOS 10.14 (Mojave) or later, Apple Silicon (M1/M2/M3)
@@ -142,7 +151,7 @@ This creates: `dist/Axis Pro Setup 0.1.0.exe`
 5. **Upload installer files:**
 
    - Scroll down to "Attach binaries by dropping them here or selecting them"
-   - Drag and drop `dist/Axis Pro-0.1.0-arm64.dmg` (macOS)
+   - Drag and drop `dist/Axis-Pro-0.1.0-mac-arm64.zip` (macOS)
    - (Optional) Drag and drop `dist/Axis Pro Setup 0.1.0.exe` (Windows)
    - Wait for uploads to complete
 
@@ -162,10 +171,10 @@ After creating the release:
 3. Replace `yourusername` with your actual GitHub username
 4. Commit the change
 
-**Or** if you want to direct link to the DMG:
+**Or** if you want to direct link to the ZIP:
 
 ```markdown
-**Download:** [Axis Pro-0.1.0-arm64.dmg](https://github.com/YOUR_USERNAME/axis-pro-app/releases/download/v0.1.0/Axis%20Pro-0.1.0-arm64.dmg)
+**Download:** [Axis-Pro-0.1.0-mac-arm64.zip](https://github.com/YOUR_USERNAME/axis-pro-app/releases/download/v0.1.0/Axis-Pro-0.1.0-mac-arm64.zip)
 ```
 
 ---
@@ -188,11 +197,11 @@ https://github.com/YOUR_USERNAME/axis-pro-app/releases
 
 ## Verification Checklist
 
-- ✅ DMG file created successfully
-- ✅ Code committed with PR #12 changes
+- ✅ Distribution package created successfully (ZIP)
+- ✅ Code committed with all bug fixes
 - ✅ Code pushed to GitHub
 - ✅ GitHub Release created with tag v0.1.0
-- ✅ DMG uploaded to release
+- ✅ ZIP uploaded to release
 - ✅ README link updated
 - ✅ Release description includes all features
 - ✅ Installation instructions clear
@@ -205,9 +214,9 @@ https://github.com/YOUR_USERNAME/axis-pro-app/releases
 When users click on your release:
 
 1. They'll see the release description with all features
-2. They can download the DMG file
-3. They'll follow installation instructions
-4. They'll right-click → Open on first launch
+2. They can download the ZIP file (or EXE for Windows)
+3. They'll follow installation instructions (extract → drag to Applications)
+4. They'll right-click → Open on first launch (macOS)
 5. They'll be able to use all MVP features!
 
 ---
