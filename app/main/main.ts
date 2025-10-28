@@ -431,7 +431,7 @@ ipcMain.handle(
     try {
       // First, probe the file to check if it has video
       const mediaInfo = await ffmpegService.probe(clipPath);
-      
+
       // If file has no video (audio-only), skip thumbnail generation
       if (mediaInfo.width === 0 || mediaInfo.height === 0) {
         console.log(

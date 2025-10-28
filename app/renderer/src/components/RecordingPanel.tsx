@@ -427,6 +427,10 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
     if (webcamStreamRef.current) {
       webcamStreamRef.current.getTracks().forEach((track) => track.stop());
       webcamStreamRef.current = null;
+      // Clear video preview
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = null;
+      }
     }
     if (micStreamRef.current) {
       micStreamRef.current.getTracks().forEach((track) => track.stop());
@@ -445,6 +449,15 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       .padStart(2, "0")}`;
   };
 
+  /**
+   * Handle panel close - stop streams before closing
+   */
+  const handleClose = () => {
+    console.log("[Recording] Closing panel and stopping streams");
+    stopAllStreams();
+    onClose();
+  };
+
   return (
     <div className="recording-panel">
       <div className="recording-panel-header">
@@ -454,7 +467,7 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
           {mode === "screen" && "Screen Recording"}
           {mode === "screen-camera" && "Screen Recording with Camera"}
         </h3>
-        <button className="close-btn" onClick={onClose} disabled={isRecording}>
+        <button className="close-btn" onClick={handleClose} disabled={isRecording}>
           ×
         </button>
       </div>
