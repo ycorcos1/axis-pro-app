@@ -147,6 +147,41 @@ contextBridge.exposeInMainWorld("electronAPI", {
   ): Promise<string> => {
     return ipcRenderer.invoke("save-recording-chunk", projectId, fileName, data);
   },
+
+  // Menu event listeners (safe wrapper around ipcRenderer.on)
+  onMenuEvent: (channel: string, callback: () => void) => {
+    const validChannels = [
+      "menu-new-project",
+      "menu-open-project",
+      "menu-import-media",
+      "menu-record-movie",
+      "menu-record-audio",
+      "menu-record-screen",
+      "menu-record-screen-camera",
+      "menu-export",
+    ];
+    
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, callback);
+    }
+  },
+
+  removeMenuListener: (channel: string, callback: () => void) => {
+    const validChannels = [
+      "menu-new-project",
+      "menu-open-project",
+      "menu-import-media",
+      "menu-record-movie",
+      "menu-record-audio",
+      "menu-record-screen",
+      "menu-record-screen-camera",
+      "menu-export",
+    ];
+    
+    if (validChannels.includes(channel)) {
+      ipcRenderer.removeListener(channel, callback);
+    }
+  },
 });
 
 console.log("[Preload] electronAPI exposed successfully!");
@@ -198,6 +233,8 @@ declare global {
         fileName: string,
         data: ArrayBuffer
       ) => Promise<string>;
+      onMenuEvent: (channel: string, callback: () => void) => void;
+      removeMenuListener: (channel: string, callback: () => void) => void;
     };
   }
 }

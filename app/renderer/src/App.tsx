@@ -367,28 +367,28 @@ const App: React.FC = () => {
     };
 
     // Register listeners
-    ipcRenderer.on("menu-new-project", handleMenuNewProject);
-    ipcRenderer.on("menu-open-project", handleMenuOpenProject);
-    ipcRenderer.on("menu-import-media", handleMenuImportMedia);
-    ipcRenderer.on("menu-record-movie", handleMenuRecordMovie);
-    ipcRenderer.on("menu-record-audio", handleMenuRecordAudio);
-    ipcRenderer.on("menu-record-screen", handleMenuRecordScreen);
-    ipcRenderer.on("menu-record-screen-camera", handleMenuRecordScreenCamera);
-    ipcRenderer.on("menu-export", handleMenuExport);
+    window.electronAPI.onMenuEvent("menu-new-project", handleMenuNewProject);
+    window.electronAPI.onMenuEvent("menu-open-project", handleMenuOpenProject);
+    window.electronAPI.onMenuEvent("menu-import-media", handleMenuImportMedia);
+    window.electronAPI.onMenuEvent("menu-record-movie", handleMenuRecordMovie);
+    window.electronAPI.onMenuEvent("menu-record-audio", handleMenuRecordAudio);
+    window.electronAPI.onMenuEvent("menu-record-screen", handleMenuRecordScreen);
+    window.electronAPI.onMenuEvent("menu-record-screen-camera", handleMenuRecordScreenCamera);
+    window.electronAPI.onMenuEvent("menu-export", handleMenuExport);
 
     // Cleanup
     return () => {
-      ipcRenderer.removeListener("menu-new-project", handleMenuNewProject);
-      ipcRenderer.removeListener("menu-open-project", handleMenuOpenProject);
-      ipcRenderer.removeListener("menu-import-media", handleMenuImportMedia);
-      ipcRenderer.removeListener("menu-record-movie", handleMenuRecordMovie);
-      ipcRenderer.removeListener("menu-record-audio", handleMenuRecordAudio);
-      ipcRenderer.removeListener("menu-record-screen", handleMenuRecordScreen);
-      ipcRenderer.removeListener(
+      window.electronAPI.removeMenuListener("menu-new-project", handleMenuNewProject);
+      window.electronAPI.removeMenuListener("menu-open-project", handleMenuOpenProject);
+      window.electronAPI.removeMenuListener("menu-import-media", handleMenuImportMedia);
+      window.electronAPI.removeMenuListener("menu-record-movie", handleMenuRecordMovie);
+      window.electronAPI.removeMenuListener("menu-record-audio", handleMenuRecordAudio);
+      window.electronAPI.removeMenuListener("menu-record-screen", handleMenuRecordScreen);
+      window.electronAPI.removeMenuListener(
         "menu-record-screen-camera",
         handleMenuRecordScreenCamera
       );
-      ipcRenderer.removeListener("menu-export", handleMenuExport);
+      window.electronAPI.removeMenuListener("menu-export", handleMenuExport);
     };
   }, [currentProjectId, selectedClipId, clips]);
 
