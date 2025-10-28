@@ -532,7 +532,7 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
             
             {/* Spacer when dropdown is open to push content below */}
             {showSourcePicker && (
-              <div className="dropdown-spacer" style={{ height: `${Math.min(sources.length * 80, 280)}px` }} />
+              <div className="dropdown-spacer" style={{ height: `${Math.min(sources.length * 80 + 16, 336)}px` }} />
             )}
           </div>
         )}
