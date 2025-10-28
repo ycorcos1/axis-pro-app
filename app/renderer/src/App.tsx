@@ -283,7 +283,7 @@ const App: React.FC = () => {
 
       // Import the recorded file
       await handleImportClips([filePath]);
-      
+
       // Show single success toast after import completes
       showToast("Recording saved and imported successfully!", "success");
 
@@ -378,18 +378,42 @@ const App: React.FC = () => {
     window.electronAPI.onMenuEvent("menu-import-media", handleMenuImportMedia);
     window.electronAPI.onMenuEvent("menu-record-movie", handleMenuRecordMovie);
     window.electronAPI.onMenuEvent("menu-record-audio", handleMenuRecordAudio);
-    window.electronAPI.onMenuEvent("menu-record-screen", handleMenuRecordScreen);
-    window.electronAPI.onMenuEvent("menu-record-screen-camera", handleMenuRecordScreenCamera);
+    window.electronAPI.onMenuEvent(
+      "menu-record-screen",
+      handleMenuRecordScreen
+    );
+    window.electronAPI.onMenuEvent(
+      "menu-record-screen-camera",
+      handleMenuRecordScreenCamera
+    );
     window.electronAPI.onMenuEvent("menu-export", handleMenuExport);
 
     // Cleanup
     return () => {
-      window.electronAPI.removeMenuListener("menu-new-project", handleMenuNewProject);
-      window.electronAPI.removeMenuListener("menu-open-project", handleMenuOpenProject);
-      window.electronAPI.removeMenuListener("menu-import-media", handleMenuImportMedia);
-      window.electronAPI.removeMenuListener("menu-record-movie", handleMenuRecordMovie);
-      window.electronAPI.removeMenuListener("menu-record-audio", handleMenuRecordAudio);
-      window.electronAPI.removeMenuListener("menu-record-screen", handleMenuRecordScreen);
+      window.electronAPI.removeMenuListener(
+        "menu-new-project",
+        handleMenuNewProject
+      );
+      window.electronAPI.removeMenuListener(
+        "menu-open-project",
+        handleMenuOpenProject
+      );
+      window.electronAPI.removeMenuListener(
+        "menu-import-media",
+        handleMenuImportMedia
+      );
+      window.electronAPI.removeMenuListener(
+        "menu-record-movie",
+        handleMenuRecordMovie
+      );
+      window.electronAPI.removeMenuListener(
+        "menu-record-audio",
+        handleMenuRecordAudio
+      );
+      window.electronAPI.removeMenuListener(
+        "menu-record-screen",
+        handleMenuRecordScreen
+      );
       window.electronAPI.removeMenuListener(
         "menu-record-screen-camera",
         handleMenuRecordScreenCamera

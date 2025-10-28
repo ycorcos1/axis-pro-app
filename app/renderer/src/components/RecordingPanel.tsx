@@ -122,7 +122,13 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       // Set video preview
       if (videoPreviewRef.current) {
         videoPreviewRef.current.srcObject = stream;
-        videoPreviewRef.current.play();
+        // Use a promise-based play with error handling
+        videoPreviewRef.current.play().catch((err) => {
+          // Ignore AbortError as it's harmless (interrupted by new load)
+          if (err.name !== 'AbortError') {
+            console.warn("[Recording] Video play warning:", err);
+          }
+        });
       }
 
       console.log("[Recording] Webcam preview initialized");
@@ -204,7 +210,12 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
             // Set up preview if in movie mode and not already playing
             if (mode === "movie" && videoPreviewRef.current && !videoPreviewRef.current.srcObject) {
               videoPreviewRef.current.srcObject = webcamStream;
-              videoPreviewRef.current.play();
+              videoPreviewRef.current.play().catch((err) => {
+                // Ignore AbortError as it's harmless
+                if (err.name !== 'AbortError') {
+                  console.warn("[Recording] Video play warning:", err);
+                }
+              });
             }
           } catch (err) {
             console.error("[Recording] Webcam not available:", err);
