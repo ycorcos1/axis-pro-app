@@ -346,6 +346,24 @@ const App: React.FC = () => {
   );
 
   /**
+   * Handle removing a clip from the project
+   */
+  const handleRemoveClip = (clipId: string) => {
+    setClips((prevClips) => {
+      const updatedClips = prevClips.filter((clip) => clip.id !== clipId);
+
+      // If the removed clip was selected, clear selection
+      if (selectedClipId === clipId) {
+        setSelectedClipId(null);
+      }
+
+      return updatedClips;
+    });
+
+    showToast("Clip removed from project", "info");
+  };
+
+  /**
    * Handle project title update
    */
   const handleUpdateProjectTitle = async (
@@ -530,6 +548,7 @@ const App: React.FC = () => {
             onImportClips={handleImportClips}
             onRelinkMedia={handleRelinkMedia}
             onUpdateClipThumbnail={handleUpdateClipThumbnail}
+            onRemoveClip={handleRemoveClip}
           />
         </div>
 

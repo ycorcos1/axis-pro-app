@@ -14,12 +14,13 @@ import type { MediaInfo, ExportOptions } from "../shared/types.js";
  * Handles both development and production modes
  */
 function getFFmpegPath(): string {
-  const platform = process.platform;
-  const binaryName = platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+  // Map process.platform to directory names
+  const platformDir = process.platform === "darwin" ? "mac" : process.platform;
+  const binaryName = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
 
   // In production, FFmpeg is bundled in extraResources
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "ffmpeg", platform, binaryName);
+    return path.join(process.resourcesPath, "ffmpeg", platformDir, binaryName);
   }
 
   // In development, need to go up from dist/main/main to project root
@@ -31,11 +32,17 @@ function getFFmpegPath(): string {
     const projectRoot = appPath.includes("/dist/")
       ? appPath.split("/dist/")[0]
       : appPath.split("\\dist\\")[0];
-    return path.join(projectRoot, "resources", "ffmpeg", platform, binaryName);
+    return path.join(
+      projectRoot,
+      "resources",
+      "ffmpeg",
+      platformDir,
+      binaryName
+    );
   }
 
   // Otherwise use app path directly
-  return path.join(appPath, "resources", "ffmpeg", platform, binaryName);
+  return path.join(appPath, "resources", "ffmpeg", platformDir, binaryName);
 }
 
 /**
@@ -43,12 +50,13 @@ function getFFmpegPath(): string {
  * Handles both development and production modes
  */
 function getFFprobePath(): string {
-  const platform = process.platform;
-  const binaryName = platform === "win32" ? "ffprobe.exe" : "ffprobe";
+  // Map process.platform to directory names
+  const platformDir = process.platform === "darwin" ? "mac" : process.platform;
+  const binaryName = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
 
   // In production, FFprobe is bundled in extraResources
   if (app.isPackaged) {
-    return path.join(process.resourcesPath, "ffmpeg", platform, binaryName);
+    return path.join(process.resourcesPath, "ffmpeg", platformDir, binaryName);
   }
 
   // In development, need to go up from dist/main/main to project root
@@ -59,11 +67,17 @@ function getFFprobePath(): string {
     const projectRoot = appPath.includes("/dist/")
       ? appPath.split("/dist/")[0]
       : appPath.split("\\dist\\")[0];
-    return path.join(projectRoot, "resources", "ffmpeg", platform, binaryName);
+    return path.join(
+      projectRoot,
+      "resources",
+      "ffmpeg",
+      platformDir,
+      binaryName
+    );
   }
 
   // Otherwise use app path directly
-  return path.join(appPath, "resources", "ffmpeg", platform, binaryName);
+  return path.join(appPath, "resources", "ffmpeg", platformDir, binaryName);
 }
 
 /**

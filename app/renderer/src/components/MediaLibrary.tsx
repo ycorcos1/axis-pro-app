@@ -28,6 +28,7 @@ interface MediaLibraryProps {
   onImportClips: (filePaths: string[]) => void;
   onRelinkMedia?: (clipId: string) => void;
   onUpdateClipThumbnail?: (clipId: string, thumbnailUrl: string) => void;
+  onRemoveClip?: (clipId: string) => void;
 }
 
 const MediaLibrary: React.FC<MediaLibraryProps> = ({
@@ -37,6 +38,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
   onImportClips,
   onRelinkMedia,
   onUpdateClipThumbnail,
+  onRemoveClip,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -213,7 +215,9 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
   };
 
   const handleRemoveFromProject = (clipId: string) => {
-    // TODO: Implement remove from project
+    if (onRemoveClip) {
+      onRemoveClip(clipId);
+    }
     console.log("[MediaLibrary] Remove from project:", clipId);
     handleContextMenuClose();
   };
