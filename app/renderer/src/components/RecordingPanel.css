@@ -70,6 +70,10 @@
   margin-bottom: var(--spacing-md);
 }
 
+.recording-source.dropdown-open {
+  margin-bottom: 0;
+}
+
 .recording-source label {
   display: block;
   font-size: var(--font-size-sm);
@@ -115,6 +119,12 @@
   z-index: 1000;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
   backdrop-filter: blur(10px);
+}
+
+.dropdown-spacer {
+  width: 100%;
+  margin-bottom: var(--spacing-md);
+  pointer-events: none;
 }
 
 .source-option {
