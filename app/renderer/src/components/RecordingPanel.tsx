@@ -72,6 +72,8 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
     } else if (mode === "screen-camera") {
       setEnableWebcam(true);
       setEnableMic(true);
+      // Initialize webcam preview for PiP mode
+      initializeWebcamPreview();
     }
   }, [mode]);
 
@@ -188,9 +190,9 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
 
       // Get webcam stream if enabled (movie mode or screen-camera mode)
       let webcamStream: MediaStream | null = null;
-      if (enableWebcam || mode === "movie") {
-        // For movie mode, reuse the preview stream if available
-        if (mode === "movie" && webcamStreamRef.current) {
+      if (enableWebcam || mode === "movie" || mode === "screen-camera") {
+        // For movie mode and screen-camera mode, reuse the preview stream if available
+        if ((mode === "movie" || mode === "screen-camera") && webcamStreamRef.current) {
           webcamStream = webcamStreamRef.current;
           console.log("[Recording] Reusing webcam preview stream");
         } else {
@@ -207,9 +209,9 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
             webcamStreamRef.current = webcamStream;
             console.log("[Recording] Webcam stream acquired");
 
-            // Set up preview if in movie mode and not already playing
+            // Set up preview if in movie or screen-camera mode and not already playing
             if (
-              mode === "movie" &&
+              (mode === "movie" || mode === "screen-camera") &&
               videoPreviewRef.current &&
               !videoPreviewRef.current.srcObject
             ) {
@@ -538,18 +540,6 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
 
         {/* Recording Options */}
         <div className="recording-options">
-          {mode !== "audio" && (
-            <label className="recording-toggle">
-              <input
-                type="checkbox"
-                checked={enableWebcam}
-                onChange={(e) => setEnableWebcam(e.target.checked)}
-                disabled={isRecording || mode === "movie"}
-              />
-              <span>📷 Webcam</span>
-            </label>
-          )}
-
           {mode !== "movie" && (
             <label className="recording-toggle">
               <input
@@ -573,6 +563,27 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
               muted
               playsInline
             />
+          </div>
+        )}
+
+        {/* PiP Preview for Screen + Camera Mode */}
+        {mode === "screen-camera" && (
+          <div className="pip-preview-container">
+            <div className="pip-preview-label">
+              Preview: Screen + Camera (bottom-left)
+            </div>
+            <div className="pip-preview-content">
+              <div className="pip-screen-placeholder">
+                <span>🖥️ Screen will appear here</span>
+              </div>
+              <video
+                ref={videoPreviewRef}
+                className="pip-webcam-overlay"
+                autoPlay
+                muted
+                playsInline
+              />
+            </div>
           </div>
         )}
 
