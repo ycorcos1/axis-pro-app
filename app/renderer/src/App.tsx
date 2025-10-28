@@ -39,6 +39,7 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>("dashboard");
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [projectTitle, setProjectTitle] = useState<string>("Untitled Project");
+  const [projectThumbnailUrl, setProjectThumbnailUrl] = useState<string | null>(null);
 
   // Global state for imported clips
   const [clips, setClips] = useState<Clip[]>([]);
@@ -220,6 +221,14 @@ const App: React.FC = () => {
 
       setClips(loadedClips);
       setProjectTitle(project.title || "Untitled Project");
+      
+      // Load project thumbnail if available
+      if (project.previewThumbPath) {
+        setProjectThumbnailUrl(`local-image://${project.previewThumbPath}`);
+      } else {
+        setProjectThumbnailUrl(null);
+      }
+      
       console.log("[App] Project state loaded:", loadedClips.length, "clips");
     } catch (error) {
       console.error("[App] Failed to load project state:", error);
@@ -594,6 +603,52 @@ const App: React.FC = () => {
   };
 
   /**
+   * Handle updating project thumbnail from first clip
+   */
+  const handleUpdateProjectThumbnail = async (projectId: string) => {
+    if (clips.length === 0) {
+      showToast("No clips available to generate thumbnail", "error");
+      return;
+    }
+
+    try {
+      const firstClip = clips[0];
+      const thumbnailPath = await window.electronAPI.generateProjectThumbnail(
+        projectId,
+        firstClip.path
+      );
+      
+      if (thumbnailPath) {
+        setProjectThumbnailUrl(`local-image://${thumbnailPath}`);
+        showToast("Thumbnail updated", "success");
+      } else {
+        showToast("Could not generate thumbnail (audio-only file?)", "info");
+      }
+    } catch (error) {
+      console.error("[App] Failed to update project thumbnail:", error);
+      showToast("Failed to update thumbnail", "error");
+    }
+  };
+
+  /**
+   * Handle clearing project thumbnail
+   */
+  const handleClearProjectThumbnail = async (projectId: string) => {
+    try {
+      const project = await window.electronAPI.loadProject(projectId);
+      if (project) {
+        project.previewThumbPath = undefined;
+        await window.electronAPI.saveProject(project);
+        setProjectThumbnailUrl(null);
+        showToast("Thumbnail cleared", "success");
+      }
+    } catch (error) {
+      console.error("[App] Failed to clear project thumbnail:", error);
+      showToast("Failed to clear thumbnail", "error");
+    }
+  };
+
+  /**
    * Handle trim updates from Timeline
    * Updates the inMs/outMs for a specific clip
    */
@@ -798,7 +853,10 @@ const App: React.FC = () => {
             onExport={handleExport}
             projectId={currentProjectId}
             projectTitle={projectTitle}
+            projectThumbnailUrl={projectThumbnailUrl}
             onUpdateProjectTitle={handleUpdateProjectTitle}
+            onUpdateProjectThumbnail={handleUpdateProjectThumbnail}
+            onClearProjectThumbnail={handleClearProjectThumbnail}
           />
         </div>
       </div>

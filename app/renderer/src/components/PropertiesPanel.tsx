@@ -25,7 +25,10 @@ interface PropertiesPanelProps {
   onExport: () => void;
   projectTitle?: string;
   projectId?: string | null;
+  projectThumbnailUrl?: string | null;
   onUpdateProjectTitle?: (projectId: string, newTitle: string) => void;
+  onUpdateProjectThumbnail?: (projectId: string) => void;
+  onClearProjectThumbnail?: (projectId: string) => void;
 }
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
@@ -34,7 +37,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onExport,
   projectTitle,
   projectId,
+  projectThumbnailUrl,
   onUpdateProjectTitle,
+  onUpdateProjectThumbnail,
+  onClearProjectThumbnail,
 }) => {
   const [activeTab, setActiveTab] = useState<"clip" | "project">("clip");
   const [exportPreset, setExportPreset] = useState<string>("source");
@@ -293,61 +299,100 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         )}
 
         {activeTab === "project" && (
-          <div className="properties-section">
-            <h3 className="section-title">Project Settings</h3>
-            <div className="property-item">
-              <span className="property-label">Title</span>
-              {editingProjectTitle ? (
-                <input
-                  className="property-input"
-                  type="text"
-                  value={projectTitleValue}
-                  onChange={(e) => setProjectTitleValue(e.target.value)}
-                  onBlur={() => {
-                    setEditingProjectTitle(false);
-                    if (
-                      projectId &&
-                      onUpdateProjectTitle &&
-                      projectTitleValue.trim()
-                    ) {
-                      onUpdateProjectTitle(projectId, projectTitleValue.trim());
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+          <>
+            <div className="properties-section">
+              <h3 className="section-title">Project Settings</h3>
+              <div className="property-item">
+                <span className="property-label">Title</span>
+                {editingProjectTitle ? (
+                  <input
+                    className="property-input"
+                    type="text"
+                    value={projectTitleValue}
+                    onChange={(e) => setProjectTitleValue(e.target.value)}
+                    onBlur={() => {
                       setEditingProjectTitle(false);
                       if (
                         projectId &&
                         onUpdateProjectTitle &&
                         projectTitleValue.trim()
                       ) {
-                        onUpdateProjectTitle(
-                          projectId,
-                          projectTitleValue.trim()
-                        );
+                        onUpdateProjectTitle(projectId, projectTitleValue.trim());
                       }
-                    } else if (e.key === "Escape") {
-                      setEditingProjectTitle(false);
-                      setProjectTitleValue(projectTitle || "");
-                    }
-                  }}
-                  autoFocus
-                />
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setEditingProjectTitle(false);
+                        if (
+                          projectId &&
+                          onUpdateProjectTitle &&
+                          projectTitleValue.trim()
+                        ) {
+                          onUpdateProjectTitle(
+                            projectId,
+                            projectTitleValue.trim()
+                          );
+                        }
+                      } else if (e.key === "Escape") {
+                        setEditingProjectTitle(false);
+                        setProjectTitleValue(projectTitle || "");
+                      }
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    className="property-value property-value-editable"
+                    onClick={() => setEditingProjectTitle(true)}
+                    title="Click to edit"
+                  >
+                    {projectTitle || "Untitled Project"}
+                  </span>
+                )}
+              </div>
+              <div className="property-item">
+                <span className="property-label">FPS</span>
+                <span className="property-value">30</span>
+              </div>
+            </div>
+
+            <div className="properties-section">
+              <h3 className="section-title">Project Thumbnail</h3>
+              {projectThumbnailUrl ? (
+                <div className="thumbnail-preview">
+                  <img
+                    src={projectThumbnailUrl}
+                    alt="Project thumbnail"
+                    className="thumbnail-image"
+                  />
+                </div>
               ) : (
-                <span
-                  className="property-value property-value-editable"
-                  onClick={() => setEditingProjectTitle(true)}
-                  title="Click to edit"
-                >
-                  {projectTitle || "Untitled Project"}
-                </span>
+                <div className="thumbnail-placeholder">
+                  <span className="thumbnail-placeholder-text">No thumbnail set</span>
+                </div>
               )}
+              <div className="thumbnail-controls">
+                <button
+                  className="thumbnail-button"
+                  onClick={() => projectId && onUpdateProjectThumbnail?.(projectId)}
+                  disabled={!projectId}
+                  title="Generate from first clip"
+                >
+                  Update Thumbnail
+                </button>
+                {projectThumbnailUrl && (
+                  <button
+                    className="thumbnail-button thumbnail-button-clear"
+                    onClick={() => projectId && onClearProjectThumbnail?.(projectId)}
+                    disabled={!projectId}
+                    title="Clear thumbnail"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="property-item">
-              <span className="property-label">FPS</span>
-              <span className="property-value">30</span>
-            </div>
-          </div>
+          </>
         )}
       </div>
     </div>
