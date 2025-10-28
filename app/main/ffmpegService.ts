@@ -83,8 +83,9 @@ function getFFprobePath(): string {
 /**
  * Probe a video file and return its metadata
  * Uses ffprobe to extract duration, dimensions, codec info, etc.
+ * Handles both video files and audio-only files
  *
- * @param filePath - Absolute path to the video file
+ * @param filePath - Absolute path to the media file
  * @returns Promise<MediaInfo> - Media metadata
  */
 export async function probe(filePath: string): Promise<MediaInfo> {
@@ -101,9 +102,7 @@ export async function probe(filePath: string): Promise<MediaInfo> {
       "json",
       "-show_format",
       "-show_streams",
-      "-select_streams",
-      "v:0", // First video stream only
-      filePath,
+      filePath, // Removed -select_streams to get all streams (video and audio)
     ];
 
     const ffprobeProcess = spawn(ffprobePath, args);
@@ -127,17 +126,23 @@ export async function probe(filePath: string): Promise<MediaInfo> {
 
       try {
         const data = JSON.parse(stdout);
-        const videoStream = data.streams?.[0];
         const format = data.format;
+        const streams = data.streams || [];
 
-        if (!videoStream || !format) {
-          reject(new Error("Invalid video file or no video stream found"));
+        if (!format || streams.length === 0) {
+          reject(new Error("Invalid media file or no streams found"));
           return;
         }
 
+        // Find video stream (if exists)
+        const videoStream = streams.find((s: any) => s.codec_type === "video");
+        
+        // Find audio stream (if exists)
+        const audioStream = streams.find((s: any) => s.codec_type === "audio");
+
         // Parse fps (can be in format "30/1" or just "30")
         let fps = 30; // default
-        if (videoStream.r_frame_rate) {
+        if (videoStream?.r_frame_rate) {
           const [num, den] = videoStream.r_frame_rate.split("/").map(Number);
           fps = den ? num / den : num;
         }
@@ -145,12 +150,19 @@ export async function probe(filePath: string): Promise<MediaInfo> {
         const mediaInfo: MediaInfo = {
           path: filePath,
           duration: Math.floor(parseFloat(format.duration) * 1000), // Convert to ms
-          width: videoStream.width || 0,
-          height: videoStream.height || 0,
-          fps: Math.round(fps),
-          codec: videoStream.codec_name || "unknown",
+          width: videoStream?.width || 0, // 0 for audio-only files
+          height: videoStream?.height || 0, // 0 for audio-only files
+          fps: videoStream ? Math.round(fps) : 0, // 0 for audio-only files
+          codec: videoStream?.codec_name || audioStream?.codec_name || "unknown",
           bitrate: parseInt(format.bit_rate) || 0,
         };
+
+        console.log("[FFmpeg] Probe successful:", {
+          hasVideo: !!videoStream,
+          hasAudio: !!audioStream,
+          duration: mediaInfo.duration,
+          codec: mediaInfo.codec,
+        });
 
         resolve(mediaInfo);
       } catch (error) {
