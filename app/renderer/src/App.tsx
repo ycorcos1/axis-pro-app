@@ -64,6 +64,10 @@ const App: React.FC = () => {
   // Toast notifications
   const [toasts, setToasts] = useState<ToastType[]>([]);
 
+  // Recording panel visibility and mode
+  const [showRecordingPanel, setShowRecordingPanel] = useState(false);
+  const [recordingMode, setRecordingMode] = useState<"movie" | "audio" | "screen" | "screen-camera" | null>(null);
+
   /**
    * Show a toast notification
    */
@@ -267,11 +271,111 @@ const App: React.FC = () => {
       // Import the recorded file
       await handleImportClips([filePath]);
       showToast("Recording imported successfully", "success");
+      
+      // Hide recording panel after successful completion
+      setShowRecordingPanel(false);
+      setRecordingMode(null);
     } catch (error) {
       console.error("[App] Failed to import recording:", error);
       showToast("Failed to import recording", "error");
     }
   };
+
+  /**
+   * Handle menu commands from native menu
+   */
+  useEffect(() => {
+    // @ts-ignore - Electron IPC renderer
+    const { ipcRenderer } = window.require ? window.require("electron") : { ipcRenderer: null };
+    
+    if (!ipcRenderer) return;
+
+    // Menu: New Project
+    const handleMenuNewProject = () => {
+      handleNewProject();
+    };
+
+    // Menu: Open Project
+    const handleMenuOpenProject = () => {
+      handleBackToDashboard();
+    };
+
+    // Menu: Import Media
+    const handleMenuImportMedia = () => {
+      handleSelectFiles();
+    };
+
+    // Menu: New Movie Recording (webcam only)
+    const handleMenuRecordMovie = () => {
+      if (!currentProjectId) {
+        showToast("Please create or open a project first", "warning");
+        return;
+      }
+      setRecordingMode("movie");
+      setShowRecordingPanel(true);
+    };
+
+    // Menu: New Audio Recording
+    const handleMenuRecordAudio = () => {
+      if (!currentProjectId) {
+        showToast("Please create or open a project first", "warning");
+        return;
+      }
+      setRecordingMode("audio");
+      setShowRecordingPanel(true);
+    };
+
+    // Menu: New Screen Recording
+    const handleMenuRecordScreen = () => {
+      if (!currentProjectId) {
+        showToast("Please create or open a project first", "warning");
+        return;
+      }
+      setRecordingMode("screen");
+      setShowRecordingPanel(true);
+    };
+
+    // Menu: New Screen Recording with Camera (PiP)
+    const handleMenuRecordScreenCamera = () => {
+      if (!currentProjectId) {
+        showToast("Please create or open a project first", "warning");
+        return;
+      }
+      setRecordingMode("screen-camera");
+      setShowRecordingPanel(true);
+    };
+
+    // Menu: Export
+    const handleMenuExport = () => {
+      if (selectedClip) {
+        handleExport();
+      } else {
+        showToast("Please select a clip to export", "warning");
+      }
+    };
+
+    // Register listeners
+    ipcRenderer.on("menu-new-project", handleMenuNewProject);
+    ipcRenderer.on("menu-open-project", handleMenuOpenProject);
+    ipcRenderer.on("menu-import-media", handleMenuImportMedia);
+    ipcRenderer.on("menu-record-movie", handleMenuRecordMovie);
+    ipcRenderer.on("menu-record-audio", handleMenuRecordAudio);
+    ipcRenderer.on("menu-record-screen", handleMenuRecordScreen);
+    ipcRenderer.on("menu-record-screen-camera", handleMenuRecordScreenCamera);
+    ipcRenderer.on("menu-export", handleMenuExport);
+
+    // Cleanup
+    return () => {
+      ipcRenderer.removeListener("menu-new-project", handleMenuNewProject);
+      ipcRenderer.removeListener("menu-open-project", handleMenuOpenProject);
+      ipcRenderer.removeListener("menu-import-media", handleMenuImportMedia);
+      ipcRenderer.removeListener("menu-record-movie", handleMenuRecordMovie);
+      ipcRenderer.removeListener("menu-record-audio", handleMenuRecordAudio);
+      ipcRenderer.removeListener("menu-record-screen", handleMenuRecordScreen);
+      ipcRenderer.removeListener("menu-record-screen-camera", handleMenuRecordScreenCamera);
+      ipcRenderer.removeListener("menu-export", handleMenuExport);
+    };
+  }, [currentProjectId, selectedClip]);
 
   /**
    * Handle importing clips from file paths
@@ -577,12 +681,6 @@ const App: React.FC = () => {
             onUpdateClipThumbnail={handleUpdateClipThumbnail}
             onRemoveClip={handleRemoveClip}
           />
-          
-          {/* Recording Panel */}
-          <RecordingPanel
-            projectId={currentProjectId}
-            onRecordingComplete={handleRecordingComplete}
-          />
         </div>
 
         <div className="app-preview">
@@ -613,6 +711,26 @@ const App: React.FC = () => {
           onSeek={handleSeekTo}
         />
       </div>
+
+      {/* Recording Panel Modal (triggered by menu) */}
+      {showRecordingPanel && (
+        <div className="recording-modal-overlay" onClick={() => {
+          setShowRecordingPanel(false);
+          setRecordingMode(null);
+        }}>
+          <div className="recording-modal-content" onClick={(e) => e.stopPropagation()}>
+            <RecordingPanel
+              projectId={currentProjectId}
+              onRecordingComplete={handleRecordingComplete}
+              mode={recordingMode}
+              onClose={() => {
+                setShowRecordingPanel(false);
+                setRecordingMode(null);
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Toast notifications */}
       <div className="toast-container">

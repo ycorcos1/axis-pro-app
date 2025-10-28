@@ -11,6 +11,7 @@ import {
   dialog,
   protocol,
   safeStorage,
+  Menu,
 } from "electron";
 import path from "path";
 import fs from "fs";
@@ -156,6 +157,169 @@ function createWindow() {
     console.log("[Main] Loading renderer from:", rendererPath);
     mainWindow.loadFile(rendererPath);
   }
+}
+
+/**
+ * Create application menu with recording options
+ * @mem ref: pr13-recording-suite
+ */
+function createApplicationMenu() {
+  const isMac = process.platform === "darwin";
+
+  const template: any[] = [
+    // App Menu (macOS only)
+    ...(isMac
+      ? [
+          {
+            label: app.name,
+            submenu: [
+              { role: "about" },
+              { type: "separator" },
+              { role: "services" },
+              { type: "separator" },
+              { role: "hide" },
+              { role: "hideOthers" },
+              { role: "unhide" },
+              { type: "separator" },
+              { role: "quit" },
+            ],
+          },
+        ]
+      : []),
+
+    // File Menu
+    {
+      label: "File",
+      submenu: [
+        {
+          label: "New Project",
+          accelerator: "CmdOrCtrl+N",
+          click: () => {
+            mainWindow?.webContents.send("menu-new-project");
+          },
+        },
+        {
+          label: "Open Project",
+          accelerator: "CmdOrCtrl+O",
+          click: () => {
+            mainWindow?.webContents.send("menu-open-project");
+          },
+        },
+        { type: "separator" },
+        {
+          label: "Import Media",
+          accelerator: "CmdOrCtrl+I",
+          click: () => {
+            mainWindow?.webContents.send("menu-import-media");
+          },
+        },
+        { type: "separator" },
+        {
+          label: "New Movie Recording",
+          accelerator: isMac ? "Cmd+Ctrl+M" : "Ctrl+Shift+M",
+          click: () => {
+            mainWindow?.webContents.send("menu-record-movie");
+          },
+        },
+        {
+          label: "New Audio Recording",
+          accelerator: isMac ? "Cmd+Ctrl+A" : "Ctrl+Shift+A",
+          click: () => {
+            mainWindow?.webContents.send("menu-record-audio");
+          },
+        },
+        {
+          label: "New Screen Recording",
+          accelerator: isMac ? "Cmd+Ctrl+S" : "Ctrl+Shift+S",
+          click: () => {
+            mainWindow?.webContents.send("menu-record-screen");
+          },
+        },
+        {
+          label: "New Screen Recording with Camera",
+          accelerator: isMac ? "Cmd+Ctrl+C" : "Ctrl+Shift+C",
+          click: () => {
+            mainWindow?.webContents.send("menu-record-screen-camera");
+          },
+        },
+        { type: "separator" },
+        {
+          label: "Export",
+          accelerator: "CmdOrCtrl+E",
+          click: () => {
+            mainWindow?.webContents.send("menu-export");
+          },
+        },
+        { type: "separator" },
+        isMac ? { role: "close" } : { role: "quit" },
+      ],
+    },
+
+    // Edit Menu
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "delete" },
+        { role: "selectAll" },
+      ],
+    },
+
+    // View Menu
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+
+    // Window Menu
+    {
+      label: "Window",
+      submenu: [
+        { role: "minimize" },
+        { role: "zoom" },
+        ...(isMac
+          ? [
+              { type: "separator" },
+              { role: "front" },
+              { type: "separator" },
+              { role: "window" },
+            ]
+          : [{ role: "close" }]),
+      ],
+    },
+
+    // Help Menu
+    {
+      role: "help",
+      submenu: [
+        {
+          label: "Learn More",
+          click: async () => {
+            const { shell } = await import("electron");
+            await shell.openExternal("https://github.com/axis-pro/axis-pro");
+          },
+        },
+      ],
+    },
+  ];
+
+  const menu = Menu.buildFromTemplate(template);
+  Menu.setApplicationMenu(menu);
 }
 
 /**
@@ -499,7 +663,9 @@ ipcMain.handle("get-desktop-sources", async (): Promise<DesktopSource[]> => {
 
   try {
     const sources = await recordingService.getDesktopSources();
-    console.log(`[IPC] get-desktop-sources successful: ${sources.length} sources`);
+    console.log(
+      `[IPC] get-desktop-sources successful: ${sources.length} sources`
+    );
     return sources;
   } catch (error) {
     console.error("[IPC] get-desktop-sources failed:", error);
@@ -528,7 +694,12 @@ ipcMain.handle(
 // Save recording chunk (for streaming saves)
 ipcMain.handle(
   "save-recording-chunk",
-  async (_event, projectId: string, fileName: string, data: ArrayBuffer): Promise<string> => {
+  async (
+    _event,
+    projectId: string,
+    fileName: string,
+    data: ArrayBuffer
+  ): Promise<string> => {
     console.log("[IPC] save-recording-chunk called:", fileName);
 
     try {
@@ -562,10 +733,12 @@ app.whenReady().then(() => {
   registerLocalFileProtocol();
 
   createWindow();
+  createApplicationMenu();
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
+      createApplicationMenu();
     }
   });
 });

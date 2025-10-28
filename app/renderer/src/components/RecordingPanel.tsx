@@ -17,11 +17,15 @@ interface DesktopSource {
 interface RecordingPanelProps {
   projectId: string | null;
   onRecordingComplete: (filePath: string) => void;
+  mode: "movie" | "audio" | "screen" | "screen-camera" | null;
+  onClose: () => void;
 }
 
 const RecordingPanel: React.FC<RecordingPanelProps> = ({
   projectId,
   onRecordingComplete,
+  mode,
+  onClose,
 }) => {
   // Source selection
   const [sources, setSources] = useState<DesktopSource[]>([]);
@@ -50,7 +54,22 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
    */
   useEffect(() => {
     loadDesktopSources();
-  }, []);
+    
+    // Set initial options based on mode
+    if (mode === "movie") {
+      setEnableWebcam(true);
+      setEnableMic(true);
+    } else if (mode === "audio") {
+      setEnableWebcam(false);
+      setEnableMic(true);
+    } else if (mode === "screen") {
+      setEnableWebcam(false);
+      setEnableMic(true);
+    } else if (mode === "screen-camera") {
+      setEnableWebcam(true);
+      setEnableMic(true);
+    }
+  }, [mode]);
 
   /**
    * Cleanup streams on unmount
@@ -305,74 +324,88 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
   return (
     <div className="recording-panel">
       <div className="recording-panel-header">
-        <h3>Record</h3>
+        <h3>
+          {mode === "movie" && "Movie Recording"}
+          {mode === "audio" && "Audio Recording"}
+          {mode === "screen" && "Screen Recording"}
+          {mode === "screen-camera" && "Screen Recording with Camera"}
+        </h3>
+        <button className="close-btn" onClick={onClose} disabled={isRecording}>
+          ×
+        </button>
       </div>
 
       <div className="recording-panel-content">
-        {/* Source Selection */}
-        <div className="recording-source">
-          <label>Source:</label>
-          <button
-            className="source-picker-btn"
-            onClick={() => setShowSourcePicker(!showSourcePicker)}
-            disabled={isRecording}
-          >
-            {selectedSource
-              ? `${selectedSource.type === "screen" ? "🖥️" : "🪟"} ${selectedSource.name}`
-              : "Select Source"}
-          </button>
+        {/* Source Selection - Only show for screen modes */}
+        {(mode === "screen" || mode === "screen-camera") && (
+          <div className="recording-source">
+            <label>Source:</label>
+            <button
+              className="source-picker-btn"
+              onClick={() => setShowSourcePicker(!showSourcePicker)}
+              disabled={isRecording}
+            >
+              {selectedSource
+                ? `${selectedSource.type === "screen" ? "🖥️" : "🪟"} ${selectedSource.name}`
+                : "Select Source"}
+            </button>
 
-          {showSourcePicker && (
-            <div className="source-picker-dropdown">
-              {sources.map((source) => (
-                <div
-                  key={source.id}
-                  className={`source-option ${source.id === selectedSourceId ? "selected" : ""}`}
-                  onClick={() => {
-                    setSelectedSourceId(source.id);
-                    setShowSourcePicker(false);
-                  }}
-                >
-                  {source.thumbnail && (
-                    <img
-                      src={source.thumbnail}
-                      alt={source.name}
-                      className="source-thumbnail"
-                    />
-                  )}
-                  <div className="source-info">
-                    <span className="source-type">
-                      {source.type === "screen" ? "🖥️ Screen" : "🪟 Window"}
-                    </span>
-                    <span className="source-name">{source.name}</span>
+            {showSourcePicker && (
+              <div className="source-picker-dropdown">
+                {sources.map((source) => (
+                  <div
+                    key={source.id}
+                    className={`source-option ${source.id === selectedSourceId ? "selected" : ""}`}
+                    onClick={() => {
+                      setSelectedSourceId(source.id);
+                      setShowSourcePicker(false);
+                    }}
+                  >
+                    {source.thumbnail && (
+                      <img
+                        src={source.thumbnail}
+                        alt={source.name}
+                        className="source-thumbnail"
+                      />
+                    )}
+                    <div className="source-info">
+                      <span className="source-type">
+                        {source.type === "screen" ? "🖥️ Screen" : "🪟 Window"}
+                      </span>
+                      <span className="source-name">{source.name}</span>
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Recording Options */}
         <div className="recording-options">
-          <label className="recording-toggle">
-            <input
-              type="checkbox"
-              checked={enableWebcam}
-              onChange={(e) => setEnableWebcam(e.target.checked)}
-              disabled={isRecording}
-            />
-            <span>📷 Webcam</span>
-          </label>
+          {mode !== "audio" && (
+            <label className="recording-toggle">
+              <input
+                type="checkbox"
+                checked={enableWebcam}
+                onChange={(e) => setEnableWebcam(e.target.checked)}
+                disabled={isRecording || mode === "movie"}
+              />
+              <span>📷 Webcam</span>
+            </label>
+          )}
 
-          <label className="recording-toggle">
-            <input
-              type="checkbox"
-              checked={enableMic}
-              onChange={(e) => setEnableMic(e.target.checked)}
-              disabled={isRecording}
-            />
-            <span>🎤 Microphone</span>
-          </label>
+          {mode !== "movie" && (
+            <label className="recording-toggle">
+              <input
+                type="checkbox"
+                checked={enableMic}
+                onChange={(e) => setEnableMic(e.target.checked)}
+                disabled={isRecording}
+              />
+              <span>🎤 Microphone</span>
+            </label>
+          )}
         </div>
 
         {/* Recording Controls */}
@@ -381,7 +414,7 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
             <button
               className="recording-btn start-btn"
               onClick={startRecording}
-              disabled={!projectId || !selectedSourceId}
+              disabled={!projectId || ((mode === "screen" || mode === "screen-camera") && !selectedSourceId)}
             >
               <span className="record-dot"></span>
               Start Recording
