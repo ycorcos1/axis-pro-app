@@ -533,9 +533,24 @@ const App: React.FC = () => {
 
     showToast("Clip removed from project", "info");
 
-    // Auto-save after removal
+    // Auto-save after removal and update thumbnail
     if (currentProjectId) {
       await handleSaveProject(false, updatedClips);
+      
+      // If there are remaining clips, regenerate thumbnail from the first one
+      // If no clips left, the project thumbnail will remain but that's expected behavior
+      // (user can see their empty project in the dashboard)
+      if (updatedClips.length > 0) {
+        try {
+          await window.electronAPI.generateProjectThumbnail(
+            currentProjectId,
+            updatedClips[0].path
+          );
+          console.log("[App] Project thumbnail regenerated from remaining clip");
+        } catch (error) {
+          console.error("[App] Failed to regenerate project thumbnail:", error);
+        }
+      }
     }
   };
 
