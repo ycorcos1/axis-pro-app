@@ -24,7 +24,16 @@ Professional-grade, minimalist desktop video editor built with Electron + React 
 1. Download `Axis-Pro-0.1.0-mac-arm64.zip`
 2. Extract the ZIP file (double-click)
 3. Drag "Axis Pro.app" to your Applications folder
-4. Right-click the app → Open → Click "Open" (first time only)
+4. **IMPORTANT:** Right-click (or Control+click) the app → Choose "Open" → Click "Open" again in the dialog
+   - You may see a warning that the app is "damaged" or "from an unidentified developer"
+   - This is normal for unsigned apps - the right-click method bypasses Gatekeeper
+   - You only need to do this once; subsequent launches work normally
+
+**If you see "damaged" error:**
+```bash
+# Remove quarantine attribute from Terminal:
+xattr -cr "/Applications/Axis Pro.app"
+```
 
 **System Requirements:** macOS 10.14 (Mojave) or later, Apple Silicon (M1/M2/M3)
 
