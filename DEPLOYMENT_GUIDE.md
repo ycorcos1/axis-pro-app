@@ -31,12 +31,36 @@ git push -u origin feature/init-electron-react
 
 ---
 
-## Step 2: Create GitHub Release
+## Step 2: Build Release Packages
+
+### Build for macOS
+
+```bash
+npm run build:mac
+```
+
+This creates: `dist/Axis Pro-0.1.0-arm64.dmg`
+
+### Build for Windows (Optional)
+
+**Requirements:**
+- Windows FFmpeg binaries in `resources/ffmpeg/windows/` (see README)
+
+```bash
+npm run build:win
+```
+
+This creates: `dist/Axis Pro Setup 0.1.0.exe`
+
+---
+
+## Step 3: Create GitHub Release
 
 ### Prerequisites
 
 - ✅ Code pushed to GitHub
 - ✅ DMG file ready in `dist/` folder
+- ✅ (Optional) Windows installer ready
 
 ### Instructions
 
@@ -62,20 +86,33 @@ git push -u origin feature/init-electron-react
    - **Dashboard** - Project management with thumbnails and metadata
    - **Media Import** - Drag-and-drop or file picker for MP4/MOV videos
    - **Media Library** - Browse imported clips with metadata (duration, resolution)
+   - **Context Menu** - Right-click clips to relink or remove from project
    - **Timeline Editing** - Draggable trim handles with zoom controls
    - **Video Preview** - Playback with scrubber, play/pause controls
    - **Export MP4** - Save trimmed videos to disk
    - **Project Persistence** - Save and load your work
    - **Keyboard Shortcuts** - ⌘/Ctrl+I (Import), ⌘/Ctrl+E (Export), Space (Play/Pause)
+   - **Cross-Platform** - Works on macOS and Windows
 
    ## 📦 Installation
+
+   ### macOS
 
    1. Download `Axis Pro-0.1.0-arm64.dmg`
    2. Double-click to mount the DMG
    3. Drag "Axis Pro" to your Applications folder
    4. Right-click the app → Open → Click "Open" (first time only)
 
-   **System Requirements:** macOS 10.14 (Mojave) or later
+   **System Requirements:** macOS 10.14 (Mojave) or later, Apple Silicon (M1/M2/M3)
+
+   ### Windows
+
+   1. Download `Axis Pro Setup 0.1.0.exe`
+   2. Run the installer
+   3. Follow installation prompts
+   4. Launch from Start Menu or Desktop shortcut
+
+   **System Requirements:** Windows 10 or later (64-bit)
 
    ## 🚀 What's New
 
@@ -93,25 +130,26 @@ git push -u origin feature/init-electron-react
    ## 📝 Known Limitations
 
    - App is unsigned (requires right-click → Open on first launch)
-   - No custom app icon (uses default Electron icon)
-   - macOS only (Windows/Linux builds not configured)
+   - Windows builds require Windows FFmpeg binaries (see README for setup)
+   - Linux builds not yet configured
 
    ## 🐛 Reporting Issues
 
    Found a bug? Please open an issue on GitHub!
    ```
 
-5. **Upload the DMG file:**
+5. **Upload installer files:**
 
    - Scroll down to "Attach binaries by dropping them here or selecting them"
-   - Drag and drop `dist/Axis Pro-0.1.0-arm64.dmg`
-   - Or click to browse and select the file
+   - Drag and drop `dist/Axis Pro-0.1.0-arm64.dmg` (macOS)
+   - (Optional) Drag and drop `dist/Axis Pro Setup 0.1.0.exe` (Windows)
+   - Wait for uploads to complete
 
 6. **Click "Publish release"** button
 
 ---
 
-## Step 3: Update README Download Link
+## Step 4: Update README Download Link
 
 After creating the release:
 
@@ -131,7 +169,7 @@ After creating the release:
 
 ---
 
-## Step 4: Share Your Release! 🎊
+## Step 5: Share Your Release! 🎊
 
 Once published, share the release URL:
 
