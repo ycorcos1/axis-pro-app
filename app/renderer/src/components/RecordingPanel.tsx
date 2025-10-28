@@ -38,6 +38,7 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
 
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
+  const [isPaused, setIsPaused] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -48,6 +49,7 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
   const screenStreamRef = useRef<MediaStream | null>(null);
   const webcamStreamRef = useRef<MediaStream | null>(null);
   const micStreamRef = useRef<MediaStream | null>(null);
+  const videoPreviewRef = useRef<HTMLVideoElement | null>(null);
 
   /**
    * Load available desktop sources on mount
@@ -113,7 +115,8 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       return;
     }
 
-    if (!selectedSourceId) {
+    // For screen modes, require source selection
+    if ((mode === "screen" || mode === "screen-camera") && !selectedSourceId) {
       setError("Please select a screen or window");
       return;
     }
@@ -122,36 +125,49 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       setError(null);
       console.log("[Recording] Starting recording...");
 
-      // Get screen stream using Electron's desktopCapturer
-      const screenStream = await navigator.mediaDevices.getUserMedia({
-        audio: false,
-        video: {
-          // @ts-ignore - Electron-specific constraint
-          mandatory: {
-            chromeMediaSource: "desktop",
-            chromeMediaSourceId: selectedSourceId,
-          },
-        } as any,
-      });
+      let screenStream: MediaStream | null = null;
+      
+      // Get screen stream only for screen/screen-camera modes
+      if (mode === "screen" || mode === "screen-camera") {
+        if (!selectedSourceId) {
+          setError("Please select a screen or window");
+          return;
+        }
+        
+        screenStream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: {
+            // @ts-ignore - Electron-specific constraint
+            mandatory: {
+              chromeMediaSource: "desktop",
+              chromeMediaSourceId: selectedSourceId,
+            },
+          } as any,
+        });
 
-      screenStreamRef.current = screenStream;
-      console.log("[Recording] Screen stream acquired");
+        screenStreamRef.current = screenStream;
+        console.log("[Recording] Screen stream acquired");
+      }
 
-      // Get webcam stream if enabled
+      // Get webcam stream if enabled (movie mode or screen-camera mode)
       let webcamStream: MediaStream | null = null;
-      if (enableWebcam) {
+      if (enableWebcam || mode === "movie") {
         try {
           webcamStream = await navigator.mediaDevices.getUserMedia({
             video: {
-              width: { ideal: 640 },
-              height: { ideal: 480 },
+              width: { ideal: 1280 },
+              height: { ideal: 720 },
+              facingMode: "user",
             },
             audio: false,
           });
           webcamStreamRef.current = webcamStream;
           console.log("[Recording] Webcam stream acquired");
         } catch (err) {
-          console.warn("[Recording] Webcam not available:", err);
+          console.error("[Recording] Webcam not available:", err);
+          setError("Failed to access webcam. Please check permissions.");
+          stopAllStreams();
+          return;
         }
       }
 
@@ -173,12 +189,14 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       // Combine streams
       const combinedStream = new MediaStream();
 
-      // Add screen video track
-      screenStream.getVideoTracks().forEach((track) => {
-        combinedStream.addTrack(track);
-      });
+      // Add screen video track (if screen recording)
+      if (screenStream) {
+        screenStream.getVideoTracks().forEach((track) => {
+          combinedStream.addTrack(track);
+        });
+      }
 
-      // Add webcam video track (will be composited in export)
+      // Add webcam video track
       if (webcamStream) {
         webcamStream.getVideoTracks().forEach((track) => {
           combinedStream.addTrack(track);
@@ -190,6 +208,13 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
         micStream.getAudioTracks().forEach((track) => {
           combinedStream.addTrack(track);
         });
+      }
+
+      // Verify we have at least one video or audio track
+      if (combinedStream.getTracks().length === 0) {
+        setError("No media streams available. Please enable webcam or microphone.");
+        stopAllStreams();
+        return;
       }
 
       // Create MediaRecorder
@@ -218,12 +243,19 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
       // Start recording
       mediaRecorder.start(1000); // Collect data every 1 second
       setIsRecording(true);
+      setIsPaused(false);
       setRecordingTime(0);
 
       // Start timer
       timerRef.current = window.setInterval(() => {
         setRecordingTime((prev) => prev + 1);
       }, 1000);
+
+      // Set up video preview for movie mode
+      if (mode === "movie" && videoPreviewRef.current && webcamStream) {
+        videoPreviewRef.current.srcObject = webcamStream;
+        videoPreviewRef.current.play();
+      }
 
       console.log("[Recording] Recording started");
     } catch (err) {
@@ -234,6 +266,39 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
         }`
       );
       stopAllStreams();
+    }
+  };
+
+  /**
+   * Pause recording
+   */
+  const pauseRecording = () => {
+    if (mediaRecorderRef.current && isRecording && !isPaused) {
+      console.log("[Recording] Pausing recording...");
+      mediaRecorderRef.current.pause();
+      setIsPaused(true);
+      
+      // Pause timer
+      if (timerRef.current) {
+        clearInterval(timerRef.current);
+        timerRef.current = null;
+      }
+    }
+  };
+
+  /**
+   * Resume recording
+   */
+  const resumeRecording = () => {
+    if (mediaRecorderRef.current && isRecording && isPaused) {
+      console.log("[Recording] Resuming recording...");
+      mediaRecorderRef.current.resume();
+      setIsPaused(false);
+      
+      // Resume timer
+      timerRef.current = window.setInterval(() => {
+        setRecordingTime((prev) => prev + 1);
+      }, 1000);
     }
   };
 
@@ -422,6 +487,24 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
           )}
         </div>
 
+        {/* Video Preview for Movie Mode */}
+        {mode === "movie" && (
+          <div className="video-preview-container">
+            <video
+              ref={videoPreviewRef}
+              className="video-preview"
+              autoPlay
+              muted
+              playsInline
+            />
+            {!isRecording && (
+              <div className="preview-overlay">
+                <p>Camera preview will appear when recording starts</p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Recording Controls */}
         <div className="recording-controls">
           {!isRecording ? (
@@ -440,13 +523,30 @@ const RecordingPanel: React.FC<RecordingPanelProps> = ({
           ) : (
             <>
               <div className="recording-time">{formatTime(recordingTime)}</div>
-              <button
-                className="recording-btn stop-btn"
-                onClick={stopRecording}
-              >
-                <span className="stop-square"></span>
-                Stop Recording
-              </button>
+              <div className="recording-controls-row">
+                {isPaused ? (
+                  <button
+                    className="recording-btn resume-btn"
+                    onClick={resumeRecording}
+                  >
+                    ▶ Resume
+                  </button>
+                ) : (
+                  <button
+                    className="recording-btn pause-btn"
+                    onClick={pauseRecording}
+                  >
+                    ⏸ Pause
+                  </button>
+                )}
+                <button
+                  className="recording-btn stop-btn"
+                  onClick={stopRecording}
+                >
+                  <span className="stop-square"></span>
+                  Stop
+                </button>
+              </div>
             </>
           )}
         </div>
