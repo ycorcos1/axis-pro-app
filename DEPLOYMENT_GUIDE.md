@@ -44,6 +44,7 @@ This creates: `dist/Axis Pro-0.1.0-arm64.dmg`
 ### Build for Windows (Optional)
 
 **Requirements:**
+
 - Windows FFmpeg binaries in `resources/ffmpeg/windows/` (see README)
 
 ```bash
