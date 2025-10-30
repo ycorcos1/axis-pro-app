@@ -92,13 +92,13 @@ See [docs/PR_Summaries.md](docs/PR_Summaries.md) for complete implementation det
 
 ### Option 1: Download Pre-Built App (Recommended)
 
-**Coming Soon:** Pre-built installers will be available on [GitHub Releases](https://github.com/ycorcos1/axis-pro-app/releases).
+Download the latest release from [GitHub Releases](https://github.com/ycorcos1/axis-pro-app/releases).
 
 #### macOS Installation
 
-1. Download `Axis-Pro-1.0.0-mac-arm64.dmg`
-2. Open the DMG file
-3. Drag "Axis Pro" to Applications folder
+1. Download `Axis-Pro-1.0.0-mac-arm64.zip` from releases
+2. Extract the ZIP file (double-click)
+3. Drag "Axis Pro.app" to Applications folder
 4. **Important:** Right-click the app → "Open" → Click "Open" again
    - This bypasses macOS Gatekeeper for unsigned apps
    - Only needed on first launch
@@ -113,7 +113,7 @@ xattr -cr "/Applications/Axis Pro.app"
 
 #### Windows Installation
 
-1. Download `Axis-Pro-Setup-1.0.0.exe`
+1. Download `Axis-Pro-Setup-1.0.0.exe` from releases
 2. Run the installer
 3. Follow installation prompts
 4. Launch from Start Menu
@@ -365,7 +365,7 @@ This script automatically downloads and configures FFmpeg binaries for you.
 1. **Clone and install**:
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ycorcos1/axis-pro-app.git
    cd axis-pro-app
    npm install
    ```
@@ -389,7 +389,7 @@ To build a distributable version of the app from source:
 1. **Clone and install dependencies** (if you haven't already):
 
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/ycorcos1/axis-pro-app.git
    cd axis-pro-app
    npm install
    ```
@@ -404,7 +404,7 @@ To build a distributable version of the app from source:
    npm run build:mac
    ```
 
-   Creates: `dist/Axis Pro-0.1.0-arm64.dmg`
+   Creates: `dist/Axis-Pro-1.0.0-mac-arm64.zip`
 
    **Windows:**
 
@@ -412,10 +412,10 @@ To build a distributable version of the app from source:
    npm run build:win
    ```
 
-   Creates: `dist/Axis Pro Setup 0.1.0.exe`
+   Creates: `dist/Axis Pro Setup 1.0.0.exe`
 
 4. **Install the app**:
-   - **macOS**: Open the DMG and drag to Applications
+   - **macOS**: Extract the ZIP and drag "Axis Pro.app" to Applications
    - **Windows**: Run the `.exe` installer
 
 **Note**: You need FFmpeg binaries for your platform in the `resources/ffmpeg/[platform]/` directory before building.
@@ -424,11 +424,12 @@ To build a distributable version of the app from source:
 
 **First Launch Security Warning (macOS)**:
 
-- See [QUICK_FIX_DAMAGED_ERROR.md](QUICK_FIX_DAMAGED_ERROR.md) for quick fixes
-
-**Common Issues**:
-
-- See [INSTALLATION_TROUBLESHOOTING.md](INSTALLATION_TROUBLESHOOTING.md) for detailed solutions
+If you see "App is damaged" or "unidentified developer":
+```bash
+# Remove quarantine attribute
+xattr -cr "/Applications/Axis Pro.app"
+```
+Or right-click the app → "Open" → Click "Open" in the dialog
 
 **FFmpeg not found errors**:
 
