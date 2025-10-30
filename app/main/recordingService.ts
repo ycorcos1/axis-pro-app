@@ -53,4 +53,3 @@ export async function getDesktopSources(): Promise<DesktopSource[]> {
  * 5. Renderer saves chunks to file via IPC
  * 6. On stop, renderer notifies main to remux WebM → MP4 via FFmpeg
  */
-

@@ -136,7 +136,7 @@ export async function probe(filePath: string): Promise<MediaInfo> {
 
         // Find video stream (if exists)
         const videoStream = streams.find((s: any) => s.codec_type === "video");
-        
+
         // Find audio stream (if exists)
         const audioStream = streams.find((s: any) => s.codec_type === "audio");
 
@@ -153,7 +153,8 @@ export async function probe(filePath: string): Promise<MediaInfo> {
           width: videoStream?.width || 0, // 0 for audio-only files
           height: videoStream?.height || 0, // 0 for audio-only files
           fps: videoStream ? Math.round(fps) : 0, // 0 for audio-only files
-          codec: videoStream?.codec_name || audioStream?.codec_name || "unknown",
+          codec:
+            videoStream?.codec_name || audioStream?.codec_name || "unknown",
           bitrate: parseInt(format.bit_rate) || 0,
         };
 
@@ -416,12 +417,147 @@ async function remuxWebMToMP4WithReencode(
 
     ffmpegProcess.on("close", (code) => {
       if (code !== 0) {
-        reject(new Error(`ffmpeg re-encode failed with code ${code}: ${stderr}`));
+        reject(
+          new Error(`ffmpeg re-encode failed with code ${code}: ${stderr}`)
+        );
         return;
       }
 
       console.log("[FFmpeg] Re-encode completed successfully");
       resolve();
+    });
+
+    ffmpegProcess.on("error", (error) => {
+      reject(new Error(`Failed to spawn ffmpeg: ${error.message}`));
+    });
+  });
+}
+
+/**
+ * Generate thumbnail strip for a media file
+ * Creates a series of thumbnails at regular intervals
+ * For PR #14 — Pro Timeline
+ *
+ * @param inputPath - Path to source media file
+ * @param outputDir - Directory to save thumbnails
+ * @param fps - Frames per second to extract (default: 2 = 1 thumb every 0.5s)
+ * @returns Promise<string> - Path to output directory
+ */
+export async function generateThumbnailStrip(
+  inputPath: string,
+  outputDir: string,
+  fps: number = 2
+): Promise<string> {
+  const ffmpegPath = getFFmpegPath();
+  const fs = await import("fs/promises");
+
+  console.log("[FFmpeg] Generating thumbnail strip for:", inputPath);
+  console.log("[FFmpeg] Output directory:", outputDir);
+
+  // Create output directory if it doesn't exist
+  await fs.mkdir(outputDir, { recursive: true });
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      "-i",
+      inputPath,
+      "-vf",
+      `fps=${fps},scale=160:-1`, // Extract at fps rate, scale to 160px width
+      "-y",
+      path.join(outputDir, "thumb-%04d.jpg"), // Output pattern
+    ];
+
+    console.log("[FFmpeg] Running:", ffmpegPath, args.join(" "));
+
+    const ffmpegProcess = spawn(ffmpegPath, args);
+
+    let stderr = "";
+
+    ffmpegProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    ffmpegProcess.on("close", (code) => {
+      if (code !== 0) {
+        reject(
+          new Error(
+            `ffmpeg thumbnail generation failed with code ${code}: ${stderr}`
+          )
+        );
+        return;
+      }
+
+      console.log("[FFmpeg] Thumbnail strip generated successfully");
+      resolve(outputDir);
+    });
+
+    ffmpegProcess.on("error", (error) => {
+      reject(new Error(`Failed to spawn ffmpeg: ${error.message}`));
+    });
+  });
+}
+
+/**
+ * Generate waveform visualization for an audio/video file
+ * Creates a PNG image showing the audio waveform
+ * For PR #14 — Pro Timeline
+ *
+ * @param inputPath - Path to source media file
+ * @param outputPath - Path for output PNG file
+ * @param width - Width of waveform image (default: 1200)
+ * @param height - Height of waveform image (default: 200)
+ * @returns Promise<string> - Path to output waveform PNG
+ */
+export async function generateWaveform(
+  inputPath: string,
+  outputPath: string,
+  width: number = 1200,
+  height: number = 200
+): Promise<string> {
+  const ffmpegPath = getFFmpegPath();
+  const fs = await import("fs/promises");
+
+  console.log("[FFmpeg] Generating waveform for:", inputPath);
+  console.log("[FFmpeg] Output path:", outputPath);
+
+  // Ensure output directory exists
+  const outputDir = path.dirname(outputPath);
+  await fs.mkdir(outputDir, { recursive: true });
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      "-i",
+      inputPath,
+      "-filter_complex",
+      `aformat=channel_layouts=mono,showwavespic=s=${width}x${height}:colors=white`,
+      "-frames:v",
+      "1",
+      "-y",
+      outputPath,
+    ];
+
+    console.log("[FFmpeg] Running:", ffmpegPath, args.join(" "));
+
+    const ffmpegProcess = spawn(ffmpegPath, args);
+
+    let stderr = "";
+
+    ffmpegProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    ffmpegProcess.on("close", (code) => {
+      if (code !== 0) {
+        reject(
+          new Error(
+            `ffmpeg waveform generation failed with code ${code}: ${stderr}`
+          )
+        );
+        return;
+      }
+
+      console.log("[FFmpeg] Waveform generated successfully");
+      resolve(outputPath);
     });
 
     ffmpegProcess.on("error", (error) => {

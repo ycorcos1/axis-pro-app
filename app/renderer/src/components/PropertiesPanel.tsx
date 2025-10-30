@@ -1,10 +1,12 @@
 /**
  * PropertiesPanel Component
- * @mem ref: design-spec
- * Right panel for clip properties and export settings
+ * @mem ref: design-spec, pr16-text-overlays
+ * Right panel for clip properties, project settings, and overlay editing
  */
 
 import React, { useState } from "react";
+import type { Overlay } from "../../../shared/timelineTypes";
+import OverlayInspector from "./OverlayInspector";
 import "./PropertiesPanel.css";
 
 interface Clip {
@@ -23,26 +25,36 @@ interface PropertiesPanelProps {
   clip: Clip | null;
   onUpdateTrim: (clipId: string, inMs: number, outMs: number) => void;
   onExport: () => void;
+  isExporting?: boolean;
   projectTitle?: string;
   projectId?: string | null;
   projectThumbnailUrl?: string | null;
   onUpdateProjectTitle?: (projectId: string, newTitle: string) => void;
   onUpdateProjectThumbnail?: (projectId: string) => void;
   onClearProjectThumbnail?: (projectId: string) => void;
+  selectedOverlay?: Overlay | null;
+  onUpdateOverlay?: (overlayId: string, updates: Partial<Overlay>) => void;
+  onDeleteOverlay?: (overlayId: string) => void;
 }
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   clip,
   onUpdateTrim,
   onExport,
+  isExporting = false,
   projectTitle,
   projectId,
   projectThumbnailUrl,
   onUpdateProjectTitle,
   onUpdateProjectThumbnail,
   onClearProjectThumbnail,
+  selectedOverlay,
+  onUpdateOverlay,
+  onDeleteOverlay,
 }) => {
-  const [activeTab, setActiveTab] = useState<"clip" | "project">("clip");
+  const [activeTab, setActiveTab] = useState<"clip" | "project" | "overlay">(
+    "clip"
+  );
   const [exportPreset, setExportPreset] = useState<string>("source");
   const [editingIn, setEditingIn] = useState(false);
   const [editingOut, setEditingOut] = useState(false);
@@ -55,6 +67,13 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   React.useEffect(() => {
     setProjectTitleValue(projectTitle || "");
   }, [projectTitle]);
+
+  // Auto-switch to Overlay tab when overlay is selected
+  React.useEffect(() => {
+    if (selectedOverlay) {
+      setActiveTab("overlay");
+    }
+  }, [selectedOverlay]);
 
   // Format time in MM:SS:MS
   const formatTimecode = (ms: number): string => {
@@ -143,6 +162,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           onClick={() => setActiveTab("project")}
         >
           Project
+        </button>
+        <button
+          className={`tab-button ${activeTab === "overlay" ? "active" : ""}`}
+          onClick={() => setActiveTab("overlay")}
+        >
+          Overlay
         </button>
       </div>
 
@@ -290,9 +315,14 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <button
                 className="export-button"
                 onClick={onExport}
-                disabled={!clip}
+                disabled={isExporting}
+                title={
+                  isExporting
+                    ? "Export in progress..."
+                    : "Export timeline composition to MP4"
+                }
               >
-                Export MP4
+                {isExporting ? "Exporting..." : "Export Timeline MP4"}
               </button>
             </div>
           </>
@@ -317,7 +347,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                         onUpdateProjectTitle &&
                         projectTitleValue.trim()
                       ) {
-                        onUpdateProjectTitle(projectId, projectTitleValue.trim());
+                        onUpdateProjectTitle(
+                          projectId,
+                          projectTitleValue.trim()
+                        );
                       }
                     }}
                     onKeyDown={(e) => {
@@ -368,13 +401,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 </div>
               ) : (
                 <div className="thumbnail-placeholder">
-                  <span className="thumbnail-placeholder-text">No thumbnail set</span>
+                  <span className="thumbnail-placeholder-text">
+                    No thumbnail set
+                  </span>
                 </div>
               )}
               <div className="thumbnail-controls">
                 <button
                   className="thumbnail-button"
-                  onClick={() => projectId && onUpdateProjectThumbnail?.(projectId)}
+                  onClick={() =>
+                    projectId && onUpdateProjectThumbnail?.(projectId)
+                  }
                   disabled={!projectId}
                   title="Generate from first clip"
                 >
@@ -383,7 +420,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 {projectThumbnailUrl && (
                   <button
                     className="thumbnail-button thumbnail-button-clear"
-                    onClick={() => projectId && onClearProjectThumbnail?.(projectId)}
+                    onClick={() =>
+                      projectId && onClearProjectThumbnail?.(projectId)
+                    }
                     disabled={!projectId}
                     title="Clear thumbnail"
                   >
@@ -393,6 +432,14 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               </div>
             </div>
           </>
+        )}
+
+        {activeTab === "overlay" && onUpdateOverlay && onDeleteOverlay && (
+          <OverlayInspector
+            overlay={selectedOverlay || null}
+            onUpdateOverlay={onUpdateOverlay}
+            onDeleteOverlay={onDeleteOverlay}
+          />
         )}
       </div>
     </div>

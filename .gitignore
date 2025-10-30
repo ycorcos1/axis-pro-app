@@ -8,6 +8,9 @@ build/
 *.dmg
 *.exe
 
+# AI Shorts output directories
+**/shorts/
+
 # IDE
 .vscode/
 .idea/

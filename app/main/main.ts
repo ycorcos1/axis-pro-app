@@ -4,6 +4,10 @@
  * Handles window creation, application lifecycle, and IPC communication
  */
 
+// Load environment variables FIRST (before any other imports that might use them)
+import dotenv from "dotenv";
+dotenv.config();
+
 import {
   app,
   BrowserWindow,
@@ -15,6 +19,7 @@ import {
 } from "electron";
 import path from "path";
 import fs from "fs";
+import { promises as fsPromises } from "fs";
 import { fileURLToPath } from "url";
 import type {
   Clip,
@@ -30,6 +35,8 @@ import * as ffmpegService from "./ffmpegService.js";
 import * as projectIO from "./projectIO.js";
 import * as thumbService from "./thumbService.js";
 import * as recordingService from "./recordingService.js";
+import * as aiService from "./aiService.js";
+import * as aiShortsService from "./aiShortsService.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -688,7 +695,7 @@ ipcMain.handle(
   "show-open-dialog",
   async (_event, options: any): Promise<string[]> => {
     console.log("[IPC] show-open-dialog called with options:", options);
-    
+
     try {
       const result = await dialog.showOpenDialog(options);
       console.log("[IPC] Dialog result:", result);
@@ -796,8 +803,375 @@ ipcMain.handle(
   }
 );
 
+/**
+ * Timeline Media Services IPC Handlers
+ * @mem ref: pr14-timeline
+ */
+
+// Generate thumbnail strip for a media file
+ipcMain.handle(
+  "media:thumbs",
+  async (_event, mediaId: string, mediaPath: string): Promise<string> => {
+    console.log("[IPC] media:thumbs called for:", mediaId);
+
+    try {
+      const cacheDir = path.join(
+        app.getPath("userData"),
+        "cache",
+        "thumbs",
+        mediaId
+      );
+
+      const thumbsDir = await ffmpegService.generateThumbnailStrip(
+        mediaPath,
+        cacheDir,
+        2 // 2 fps = 1 thumb every 0.5s
+      );
+
+      console.log("[IPC] media:thumbs successful:", thumbsDir);
+      return thumbsDir;
+    } catch (error) {
+      console.error("[IPC] media:thumbs failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Generate waveform for a media file
+ipcMain.handle(
+  "media:waveform",
+  async (_event, mediaId: string, mediaPath: string): Promise<string> => {
+    console.log("[IPC] media:waveform called for:", mediaId);
+
+    try {
+      const cacheDir = path.join(app.getPath("userData"), "cache", "waveforms");
+
+      // Ensure cache directory exists
+      await import("fs/promises").then((fs) =>
+        fs.mkdir(cacheDir, { recursive: true })
+      );
+
+      const outputPath = path.join(cacheDir, `${mediaId}.png`);
+
+      const waveformPath = await ffmpegService.generateWaveform(
+        mediaPath,
+        outputPath,
+        1200,
+        200
+      );
+
+      console.log("[IPC] media:waveform successful:", waveformPath);
+      return waveformPath;
+    } catch (error) {
+      console.error("[IPC] media:waveform failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Probe media and return full MediaInfo (for timeline)
+ipcMain.handle(
+  "media:probe",
+  async (_event, filePath: string): Promise<any> => {
+    console.log("[IPC] media:probe called for:", filePath);
+
+    try {
+      const mediaInfo = await ffmpegService.probe(filePath);
+
+      // Determine if has video and audio based on dimensions and codec
+      const hasVideo = mediaInfo.width > 0 && mediaInfo.height > 0;
+      const hasAudio =
+        mediaInfo.codec.includes("aac") ||
+        mediaInfo.codec.includes("mp3") ||
+        mediaInfo.codec.includes("opus") ||
+        mediaInfo.codec.includes("vorbis") ||
+        // For video files, assume they have audio unless audio-only codec detected
+        (hasVideo &&
+          !mediaInfo.codec.includes("h264") &&
+          !mediaInfo.codec.includes("vp"));
+
+      // Convert to timeline MediaInfo format
+      const timelineMediaInfo = {
+        id: `media-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        path: filePath,
+        kind: !hasVideo && hasAudio ? "audio" : "video",
+        durationMs: mediaInfo.duration,
+        streams: {
+          v: hasVideo
+            ? {
+                fps: mediaInfo.fps,
+                w: mediaInfo.width,
+                h: mediaInfo.height,
+              }
+            : undefined,
+          a: {
+            rate: 48000, // Default sample rate
+            channels: 2, // Default stereo
+          },
+        },
+      };
+
+      console.log("[IPC] media:probe successful:", timelineMediaInfo);
+      return timelineMediaInfo;
+    } catch (error) {
+      console.error("[IPC] media:probe failed:", error);
+      throw error;
+    }
+  }
+);
+
+// Export sequence (timeline export)
+ipcMain.handle(
+  "timeline:export",
+  async (
+    _event,
+    exportData: { sequence: any; media: any; outputPath: string }
+  ): Promise<any> => {
+    console.log("[IPC] timeline:export called");
+
+    try {
+      const { sequence, media, outputPath } = exportData;
+
+      console.log("[IPC] Export data received:");
+      console.log("  Sequence tracks:", sequence?.tracks?.length);
+      console.log("  Media count:", Object.keys(media || {}).length);
+      console.log("  Output path:", outputPath);
+
+      // Build export command using exportBuilder
+      const { buildExportCommand } = await import("../shared/exportBuilder.js");
+
+      console.log("[IPC] Building export command...");
+      const ffmpegArgs = buildExportCommand(sequence, media, outputPath);
+
+      console.log("[IPC] Export command:", ffmpegArgs.join(" "));
+
+      // Execute FFmpeg export
+      const { spawn } = await import("child_process");
+      const ffmpegPath = getFFmpegPath();
+
+      console.log("[IPC] Using FFmpeg path:", ffmpegPath);
+
+      return new Promise((resolve, reject) => {
+        const ffmpegProcess = spawn(ffmpegPath, ffmpegArgs);
+
+        let stderr = "";
+
+        ffmpegProcess.stderr.on("data", (data) => {
+          stderr += data.toString();
+          console.log("[FFmpeg]", data.toString().trim());
+        });
+
+        ffmpegProcess.on("close", (code) => {
+          if (code !== 0) {
+            const errorMsg = `FFmpeg failed with code ${code}: ${stderr}`;
+            console.error("[IPC] FFmpeg error:", errorMsg);
+            reject({
+              success: false,
+              error: errorMsg,
+            });
+            return;
+          }
+
+          console.log("[IPC] timeline:export successful");
+          resolve({ success: true, outputPath });
+        });
+
+        ffmpegProcess.on("error", (error) => {
+          const errorMsg = `Failed to spawn FFmpeg: ${error.message}`;
+          console.error("[IPC] Spawn error:", errorMsg);
+          reject({
+            success: false,
+            error: errorMsg,
+          });
+        });
+      });
+    } catch (error) {
+      console.error("[IPC] timeline:export failed:", error);
+      const errorMsg =
+        error instanceof Error
+          ? error.message
+          : typeof error === "string"
+          ? error
+          : JSON.stringify(error);
+
+      return {
+        success: false,
+        error: errorMsg,
+      };
+    }
+  }
+);
+
+// Helper to get FFmpeg path (needed for export)
+function getFFmpegPath(): string {
+  const platformDir = process.platform === "darwin" ? "mac" : process.platform;
+  const binaryName = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+
+  if (app.isPackaged) {
+    return path.join(process.resourcesPath, "ffmpeg", platformDir, binaryName);
+  }
+
+  const appPath = app.getAppPath();
+  if (appPath.includes("/dist/") || appPath.includes("\\dist\\")) {
+    const projectRoot = appPath.includes("/dist/")
+      ? appPath.split("/dist/")[0]
+      : appPath.split("\\dist\\")[0];
+    return path.join(
+      projectRoot,
+      "resources",
+      "ffmpeg",
+      platformDir,
+      binaryName
+    );
+  }
+
+  return path.join(appPath, "resources", "ffmpeg", platformDir, binaryName);
+}
+
+/**
+ * AI Shorts IPC Handlers
+ * @mem ref: pr17-ai-shorts
+ */
+
+// Check if AI Shorts feature is available
+ipcMain.handle("ai-shorts:check-available", async (): Promise<boolean> => {
+  console.log("[IPC] ai-shorts:check-available called");
+  const available = aiShortsService.isAIShortsAvailable();
+  console.log("[IPC] AI Shorts available:", available);
+  return available;
+});
+
+// Generate AI shorts from a video
+ipcMain.handle(
+  "ai-shorts:generate",
+  async (
+    _event,
+    videoPath: string,
+    projectId: string,
+    numShorts: number = 5
+  ): Promise<any> => {
+    console.log("[IPC] ai-shorts:generate called");
+    console.log("  Video:", videoPath);
+    console.log("  Project:", projectId);
+    console.log("  NumShorts:", numShorts);
+
+    try {
+      // Generate shorts with progress updates sent back to renderer
+      const result = await aiShortsService.generateAIShorts(
+        videoPath,
+        projectId,
+        (progress) => {
+          // Send progress updates to renderer
+          if (mainWindow) {
+            mainWindow.webContents.send("ai-shorts:progress", progress);
+          }
+        },
+        numShorts
+      );
+
+      console.log("[IPC] ai-shorts:generate complete:", result.success);
+      return result;
+    } catch (error: any) {
+      console.error("[IPC] ai-shorts:generate failed:", error);
+      return {
+        success: false,
+        shorts: [],
+        error: error.message,
+      };
+    }
+  }
+);
+
+// Load existing AI shorts for a project
+ipcMain.handle(
+  "ai-shorts:load",
+  async (_event, projectId: string): Promise<any[]> => {
+    console.log("[IPC] ai-shorts:load called for project:", projectId);
+
+    try {
+      const shorts = await aiShortsService.loadExistingShorts(projectId);
+      console.log("[IPC] ai-shorts:load complete:", shorts.length, "shorts");
+      return shorts;
+    } catch (error: any) {
+      console.error("[IPC] ai-shorts:load failed:", error);
+      return [];
+    }
+  }
+);
+
+// Generate MORE AI shorts from the same video
+ipcMain.handle(
+  "ai-shorts:generate-more",
+  async (
+    _event,
+    videoPath: string,
+    projectId: string,
+    existingShorts: any[],
+    numShorts: number = 5
+  ): Promise<any> => {
+    console.log("[IPC] ai-shorts:generate-more called");
+    console.log("  Video:", videoPath);
+    console.log("  Project:", projectId);
+    console.log("  Existing shorts:", existingShorts.length);
+    console.log("  NumShorts:", numShorts);
+
+    try {
+      const result = await aiShortsService.generateMoreAIShorts(
+        videoPath,
+        projectId,
+        existingShorts,
+        (progress) => {
+          if (mainWindow) {
+            mainWindow.webContents.send("ai-shorts:progress", progress);
+          }
+        },
+        numShorts
+      );
+
+      console.log("[IPC] ai-shorts:generate-more complete:", result.success);
+      return result;
+    } catch (error: any) {
+      console.error("[IPC] ai-shorts:generate-more failed:", error);
+      return {
+        success: false,
+        shorts: [],
+        error: error.message,
+      };
+    }
+  }
+);
+
+// Copy file IPC handler (for exporting AI shorts)
+ipcMain.handle(
+  "file:copy",
+  async (_event, sourcePath: string, destPath: string): Promise<boolean> => {
+    console.log("[IPC] file:copy called");
+    console.log("  Source:", sourcePath);
+    console.log("  Dest:", destPath);
+
+    try {
+      await fsPromises.copyFile(sourcePath, destPath);
+      console.log("[IPC] file:copy complete");
+      return true;
+    } catch (error: any) {
+      console.error("[IPC] file:copy failed:", error);
+      throw error;
+    }
+  }
+);
+
 // App event handlers
 app.whenReady().then(() => {
+  // Initialize OpenAI client (if API key is available)
+  try {
+    aiService.initializeOpenAI();
+  } catch (error) {
+    console.warn(
+      "[Main] AI features disabled: OpenAI client initialization failed:",
+      error
+    );
+  }
+
   // Register custom protocol before creating window
   registerLocalFileProtocol();
 

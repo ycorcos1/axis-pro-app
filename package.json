@@ -1,13 +1,13 @@
 {
   "name": "axis-pro",
-  "version": "0.1.0",
-  "description": "Professional-grade, minimalist desktop video editor",
+  "version": "1.0.0",
+  "description": "Professional-grade, minimalist desktop video editor with recording, multi-track editing, text overlays, and AI-powered shorts generation",
   "main": "dist/main/main/main.js",
   "scripts": {
     "dev": "npm run build:main && concurrently \"vite\" \"wait-on http://localhost:5173 && electron dist/main/main/main.js\"",
     "dev:vite": "vite",
     "build": "npm run build:main && npm run build:renderer",
-    "build:main": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json",
+    "build:main": "tsc -p tsconfig.main.json && tsc -p tsconfig.preload.json && echo '{\"type\":\"module\"}' > dist/main/package.json",
     "build:renderer": "vite build",
     "pack:mac": "electron-builder --mac dmg",
     "pack:win": "electron-builder --win nsis",
@@ -17,9 +17,24 @@
   "keywords": [
     "video-editor",
     "electron",
-    "desktop"
+    "desktop",
+    "screen-recording",
+    "video-editing",
+    "ffmpeg",
+    "multi-track",
+    "text-overlays",
+    "ai-shorts",
+    "content-creation"
   ],
-  "author": "",
+  "author": "Yahav Corcos",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ycorcos1/axis-pro-app.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ycorcos1/axis-pro-app/issues"
+  },
+  "homepage": "https://github.com/ycorcos1/axis-pro-app#readme",
   "license": "MIT",
   "type": "module",
   "devDependencies": {
@@ -35,6 +50,8 @@
     "wait-on": "^9.0.1"
   },
   "dependencies": {
+    "dotenv": "^17.2.3",
+    "openai": "^6.7.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   }

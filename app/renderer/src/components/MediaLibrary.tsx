@@ -52,14 +52,30 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
   const [renamingClipId, setRenamingClipId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState<string>("");
 
+  // Track which clips we've already processed to avoid re-running
+  const processedClipsRef = React.useRef<Set<string>>(new Set());
+
+  // Memoize clip IDs to prevent re-creating the string on every render
+  const clipIds = React.useMemo(
+    () => clips.map((c) => c.id).join(","),
+    [clips]
+  );
+
+  // Store callback in ref to prevent it from triggering re-renders
+  const updateThumbnailRef = React.useRef(onUpdateClipThumbnail);
+  React.useEffect(() => {
+    updateThumbnailRef.current = onUpdateClipThumbnail;
+  }, [onUpdateClipThumbnail]);
+
   // Generate thumbnails for new clips
   React.useEffect(() => {
     const generateThumbnails = async () => {
-      console.log(
-        "[MediaLibrary] Checking thumbnails for clips:",
-        clips.length
-      );
       for (const clip of clips) {
+        // Skip if we've already processed this clip
+        if (processedClipsRef.current.has(clip.id)) {
+          continue;
+        }
+
         if (!clip.thumbnailUrl) {
           console.log(
             "[MediaLibrary] Generating thumbnail for clip:",
@@ -71,37 +87,41 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
               clip.path,
               clip.id
             );
-            console.log("[MediaLibrary] Thumbnail path received:", thumbPath);
-            if (thumbPath && onUpdateClipThumbnail) {
-              // Use local-image:// protocol for thumbnails
+            if (thumbPath && updateThumbnailRef.current) {
               const thumbnailUrl = `local-image://${thumbPath}`;
-              console.log(
-                "[MediaLibrary] Setting thumbnail URL:",
-                thumbnailUrl
-              );
-              onUpdateClipThumbnail(clip.id, thumbnailUrl);
-              console.log("[MediaLibrary] Thumbnail updated successfully");
-            } else if (!thumbPath) {
-              // Null thumbnail is expected for audio-only files
-              console.log(
-                "[MediaLibrary] No thumbnail generated for clip (likely audio-only):",
-                clip.filename
-              );
+              updateThumbnailRef.current(clip.id, thumbnailUrl);
             }
+            // Mark as processed after successful generation
+            processedClipsRef.current.add(clip.id);
           } catch (error) {
             console.error(
               "[MediaLibrary] Failed to generate thumbnail:",
               error
             );
+            // Still mark as processed to avoid infinite retries
+            processedClipsRef.current.add(clip.id);
           }
         } else {
-          console.log("[MediaLibrary] Clip already has thumbnail:", clip.id);
+          // Has thumbnail, mark as processed
+          processedClipsRef.current.add(clip.id);
         }
       }
     };
 
     generateThumbnails();
-  }, [clips, onUpdateClipThumbnail]);
+  }, [clipIds]); // Use memoized clipIds
+
+  // Clean up processed clips when clips are removed
+  React.useEffect(() => {
+    const currentClipIds = new Set(clips.map((c) => c.id));
+    const processedIds = Array.from(processedClipsRef.current);
+
+    processedIds.forEach((id) => {
+      if (!currentClipIds.has(id)) {
+        processedClipsRef.current.delete(id);
+      }
+    });
+  }, [clips.length]);
 
   /**
    * Format duration from milliseconds to MM:SS
@@ -324,6 +344,16 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
                   onContextMenu={(e) => handleContextMenu(e, clip.id)}
                   onDragOver={(e) => e.stopPropagation()}
                   onDrop={(e) => e.stopPropagation()}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("application/clip-id", clip.id);
+                    e.dataTransfer.setData("application/clip-path", clip.path);
+                    e.dataTransfer.effectAllowed = "copy";
+                    console.log(
+                      "[MediaLibrary] Drag started for clip:",
+                      clip.id
+                    );
+                  }}
                 >
                   <div className="clip-thumbnail">
                     {clip.thumbnailUrl ? (

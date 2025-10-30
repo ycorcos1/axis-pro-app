@@ -7,7 +7,12 @@
 import React, { useState } from "react";
 import "./TopBar.css";
 
-export type RecordingMode = "movie" | "audio" | "screen" | "screen-camera" | null;
+export type RecordingMode =
+  | "movie"
+  | "audio"
+  | "screen"
+  | "screen-camera"
+  | null;
 
 interface TopBarProps {
   onImportClick?: () => void;
@@ -53,7 +58,16 @@ const TopBar: React.FC<TopBarProps> = ({
     <div className="topbar">
       <div className="topbar-brand">
         {onBackToDashboard && (
-          <button className="topbar-back-btn" onClick={onBackToDashboard}>
+          <button
+            className="topbar-back-btn"
+            onClick={onBackToDashboard}
+            disabled={isExporting}
+            title={
+              isExporting
+                ? "Cannot navigate while exporting"
+                : "Back to Dashboard"
+            }
+          >
             ← Dashboard
           </button>
         )}
