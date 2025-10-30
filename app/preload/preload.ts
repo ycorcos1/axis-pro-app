@@ -15,6 +15,7 @@ import type {
   ExportResult,
   Project,
   ProjectMetadata,
+  DesktopSource,
 } from "../shared/types.js";
 
 // Expose secure IPC APIs to renderer
@@ -31,6 +32,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // File save dialog for export
   selectSavePath: (defaultFilename: string): Promise<string | null> => {
     return ipcRenderer.invoke("select-save-path", defaultFilename);
+  },
+
+  // Get file path from File object (for drag-and-drop)
+  getFilePathFromFile: (file: File): string => {
+    return webUtils.getPathForFile(file);
   },
 
   // FFmpeg availability check
@@ -51,6 +57,11 @@ contextBridge.exposeInMainWorld("electronAPI", {
   // Import clips
   importClips: (paths: string[]): Promise<Clip[]> => {
     return ipcRenderer.invoke("import-clips", paths);
+  },
+
+  // Show open dialog for file selection
+  showOpenDialog: (options: any): Promise<string[]> => {
+    return ipcRenderer.invoke("show-open-dialog", options);
   },
 
   // Generate clip thumbnail
@@ -110,6 +121,17 @@ contextBridge.exposeInMainWorld("electronAPI", {
     );
   },
 
+  setProjectThumbnailFromFile: (
+    projectId: string,
+    imagePath: string
+  ): Promise<string | null> => {
+    return ipcRenderer.invoke(
+      "set-project-thumbnail-from-file",
+      projectId,
+      imagePath
+    );
+  },
+
   // Send file to main process to extract path
   sendFileToMain: (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
@@ -129,6 +151,114 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getFilePath: (file: File): string => {
     return webUtils.getPathForFile(file);
   },
+
+  // Recording APIs
+  getDesktopSources: (): Promise<DesktopSource[]> => {
+    return ipcRenderer.invoke("get-desktop-sources");
+  },
+
+  remuxRecording: (inputPath: string, outputPath: string): Promise<void> => {
+    return ipcRenderer.invoke("remux-recording", inputPath, outputPath);
+  },
+
+  saveRecordingChunk: (
+    projectId: string,
+    fileName: string,
+    data: ArrayBuffer
+  ): Promise<string> => {
+    return ipcRenderer.invoke(
+      "save-recording-chunk",
+      projectId,
+      fileName,
+      data
+    );
+  },
+
+  // Timeline Media APIs (PR #14)
+  media: {
+    probe: (path: string) => ipcRenderer.invoke("media:probe", path),
+    thumbs: (mediaId: string, mediaPath: string) =>
+      ipcRenderer.invoke("media:thumbs", mediaId, mediaPath),
+    waveform: (mediaId: string, mediaPath: string) =>
+      ipcRenderer.invoke("media:waveform", mediaId, mediaPath),
+  },
+
+  // Timeline Export (PR #14)
+  timeline: {
+    exportSequence: (sequence: any, media: any, outputPath: string) =>
+      ipcRenderer.invoke("timeline:export", { sequence, media, outputPath }),
+  },
+
+  // File operations
+  copyFile: (sourcePath: string, destPath: string): Promise<boolean> =>
+    ipcRenderer.invoke("file:copy", sourcePath, destPath),
+
+  // AI Shorts APIs (PR #17)
+  aiShorts: {
+    checkAvailable: (): Promise<boolean> =>
+      ipcRenderer.invoke("ai-shorts:check-available"),
+    generate: (
+      videoPath: string,
+      projectId: string,
+      numShorts?: number
+    ): Promise<any> =>
+      ipcRenderer.invoke("ai-shorts:generate", videoPath, projectId, numShorts),
+    generateMore: (
+      videoPath: string,
+      projectId: string,
+      existingShorts: any[],
+      numShorts?: number
+    ): Promise<any> =>
+      ipcRenderer.invoke(
+        "ai-shorts:generate-more",
+        videoPath,
+        projectId,
+        existingShorts,
+        numShorts
+      ),
+    load: (projectId: string): Promise<any[]> =>
+      ipcRenderer.invoke("ai-shorts:load", projectId),
+    onProgress: (callback: (progress: any) => void) => {
+      const listener = (_event: any, progress: any) => callback(progress);
+      ipcRenderer.on("ai-shorts:progress", listener);
+      return () => ipcRenderer.removeListener("ai-shorts:progress", listener);
+    },
+  },
+
+  // Menu event listeners (safe wrapper around ipcRenderer.on)
+  onMenuEvent: (channel: string, callback: () => void) => {
+    const validChannels = [
+      "menu-new-project",
+      "menu-open-project",
+      "menu-import-media",
+      "menu-record-movie",
+      "menu-record-audio",
+      "menu-record-screen",
+      "menu-record-screen-camera",
+      "menu-export",
+    ];
+
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, callback);
+    }
+  },
+
+  removeMenuListener: (channel: string, callback: () => void) => {
+    const validChannels = [
+      "menu-new-project",
+      "menu-open-project",
+      "menu-import-media",
+      "menu-record-movie",
+      "menu-record-audio",
+      "menu-record-screen",
+      "menu-record-screen-camera",
+      "menu-export",
+    ];
+
+    if (validChannels.includes(channel)) {
+      ipcRenderer.removeListener(channel, callback);
+    }
+  },
 });
 
 console.log("[Preload] electronAPI exposed successfully!");
@@ -144,6 +274,7 @@ declare global {
       platform: string;
       selectFiles: () => Promise<string[]>;
       selectSavePath: (defaultFilename: string) => Promise<string | null>;
+      getFilePathFromFile: (file: File) => string;
       checkFFmpeg: () => Promise<{
         ffmpegAvailable: boolean;
         ffprobeAvailable: boolean;
@@ -152,6 +283,7 @@ declare global {
       }>;
       probe: (path: string) => Promise<MediaInfo>;
       importClips: (paths: string[]) => Promise<Clip[]>;
+      showOpenDialog: (options: any) => Promise<string[]>;
       generateClipThumbnail: (
         clipPath: string,
         clipId: string
@@ -172,7 +304,49 @@ declare global {
         projectId: string,
         videoPath: string
       ) => Promise<void>;
+      setProjectThumbnailFromFile: (
+        projectId: string,
+        imagePath: string
+      ) => Promise<string | null>;
       sendFileToMain: (file: File) => Promise<string>;
+      getDesktopSources: () => Promise<DesktopSource[]>;
+      remuxRecording: (inputPath: string, outputPath: string) => Promise<void>;
+      saveRecordingChunk: (
+        projectId: string,
+        fileName: string,
+        data: ArrayBuffer
+      ) => Promise<string>;
+      media: {
+        probe: (path: string) => Promise<any>;
+        thumbs: (mediaId: string, mediaPath: string) => Promise<string>;
+        waveform: (mediaId: string, mediaPath: string) => Promise<string>;
+      };
+      timeline: {
+        exportSequence: (
+          sequence: any,
+          media: any,
+          outputPath: string
+        ) => Promise<any>;
+      };
+      copyFile: (sourcePath: string, destPath: string) => Promise<boolean>;
+      aiShorts: {
+        checkAvailable: () => Promise<boolean>;
+        generate: (
+          videoPath: string,
+          projectId: string,
+          numShorts?: number
+        ) => Promise<any>;
+        generateMore: (
+          videoPath: string,
+          projectId: string,
+          existingShorts: any[],
+          numShorts?: number
+        ) => Promise<any>;
+        load: (projectId: string) => Promise<any[]>;
+        onProgress: (callback: (progress: any) => void) => () => void;
+      };
+      onMenuEvent: (channel: string, callback: () => void) => void;
+      removeMenuListener: (channel: string, callback: () => void) => void;
     };
   }
 }

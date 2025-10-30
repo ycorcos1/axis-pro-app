@@ -29,6 +29,7 @@ interface MediaLibraryProps {
   onRelinkMedia?: (clipId: string) => void;
   onUpdateClipThumbnail?: (clipId: string, thumbnailUrl: string) => void;
   onRemoveClip?: (clipId: string) => void;
+  onRenameClip?: (clipId: string, newFilename: string) => void;
 }
 
 const MediaLibrary: React.FC<MediaLibraryProps> = ({
@@ -39,6 +40,7 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
   onRelinkMedia,
   onUpdateClipThumbnail,
   onRemoveClip,
+  onRenameClip,
 }) => {
   const [isDragging, setIsDragging] = useState(false);
   const [viewMode, setViewMode] = useState<"list" | "grid">("list");
@@ -47,15 +49,33 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
     x: number;
     y: number;
   } | null>(null);
+  const [renamingClipId, setRenamingClipId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState<string>("");
+
+  // Track which clips we've already processed to avoid re-running
+  const processedClipsRef = React.useRef<Set<string>>(new Set());
+
+  // Memoize clip IDs to prevent re-creating the string on every render
+  const clipIds = React.useMemo(
+    () => clips.map((c) => c.id).join(","),
+    [clips]
+  );
+
+  // Store callback in ref to prevent it from triggering re-renders
+  const updateThumbnailRef = React.useRef(onUpdateClipThumbnail);
+  React.useEffect(() => {
+    updateThumbnailRef.current = onUpdateClipThumbnail;
+  }, [onUpdateClipThumbnail]);
 
   // Generate thumbnails for new clips
   React.useEffect(() => {
     const generateThumbnails = async () => {
-      console.log(
-        "[MediaLibrary] Checking thumbnails for clips:",
-        clips.length
-      );
       for (const clip of clips) {
+        // Skip if we've already processed this clip
+        if (processedClipsRef.current.has(clip.id)) {
+          continue;
+        }
+
         if (!clip.thumbnailUrl) {
           console.log(
             "[MediaLibrary] Generating thumbnail for clip:",
@@ -67,35 +87,41 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
               clip.path,
               clip.id
             );
-            console.log("[MediaLibrary] Thumbnail path received:", thumbPath);
-            if (thumbPath && onUpdateClipThumbnail) {
-              // Use local-image:// protocol for thumbnails
+            if (thumbPath && updateThumbnailRef.current) {
               const thumbnailUrl = `local-image://${thumbPath}`;
-              console.log(
-                "[MediaLibrary] Setting thumbnail URL:",
-                thumbnailUrl
-              );
-              onUpdateClipThumbnail(clip.id, thumbnailUrl);
-              console.log("[MediaLibrary] Thumbnail updated successfully");
-            } else {
-              console.warn(
-                "[MediaLibrary] Thumbnail path is null or no callback"
-              );
+              updateThumbnailRef.current(clip.id, thumbnailUrl);
             }
+            // Mark as processed after successful generation
+            processedClipsRef.current.add(clip.id);
           } catch (error) {
             console.error(
               "[MediaLibrary] Failed to generate thumbnail:",
               error
             );
+            // Still mark as processed to avoid infinite retries
+            processedClipsRef.current.add(clip.id);
           }
         } else {
-          console.log("[MediaLibrary] Clip already has thumbnail:", clip.id);
+          // Has thumbnail, mark as processed
+          processedClipsRef.current.add(clip.id);
         }
       }
     };
 
     generateThumbnails();
-  }, [clips, onUpdateClipThumbnail]);
+  }, [clipIds]); // Use memoized clipIds
+
+  // Clean up processed clips when clips are removed
+  React.useEffect(() => {
+    const currentClipIds = new Set(clips.map((c) => c.id));
+    const processedIds = Array.from(processedClipsRef.current);
+
+    processedIds.forEach((id) => {
+      if (!currentClipIds.has(id)) {
+        processedClipsRef.current.delete(id);
+      }
+    });
+  }, [clips.length]);
 
   /**
    * Format duration from milliseconds to MM:SS
@@ -229,6 +255,38 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
     handleContextMenuClose();
   };
 
+  const handleStartRename = (clipId: string) => {
+    const clip = clips.find((c) => c.id === clipId);
+    if (clip) {
+      setRenamingClipId(clipId);
+      setRenameValue(clip.filename);
+    }
+    handleContextMenuClose();
+  };
+
+  const handleRenameSubmit = (clipId: string) => {
+    if (onRenameClip && renameValue.trim()) {
+      onRenameClip(clipId, renameValue.trim());
+    }
+    setRenamingClipId(null);
+    setRenameValue("");
+  };
+
+  const handleRenameCancel = () => {
+    setRenamingClipId(null);
+    setRenameValue("");
+  };
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent, clipId: string) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleRenameSubmit(clipId);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      handleRenameCancel();
+    }
+  };
+
   return (
     <div className="media-library">
       <div className="panel-header">
@@ -286,6 +344,16 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
                   onContextMenu={(e) => handleContextMenu(e, clip.id)}
                   onDragOver={(e) => e.stopPropagation()}
                   onDrop={(e) => e.stopPropagation()}
+                  draggable={true}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("application/clip-id", clip.id);
+                    e.dataTransfer.setData("application/clip-path", clip.path);
+                    e.dataTransfer.effectAllowed = "copy";
+                    console.log(
+                      "[MediaLibrary] Drag started for clip:",
+                      clip.id
+                    );
+                  }}
                 >
                   <div className="clip-thumbnail">
                     {clip.thumbnailUrl ? (
@@ -313,17 +381,30 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
                     )}
                   </div>
                   <div className="clip-info">
-                    <div className="clip-filename" title={clip.filename}>
-                      {clip.filename}
-                      {clip.isMissing && (
-                        <span
-                          className="clip-missing-badge"
-                          title="Media file not found"
-                        >
-                          ⚠️
-                        </span>
-                      )}
-                    </div>
+                    {renamingClipId === clip.id ? (
+                      <input
+                        type="text"
+                        className="clip-rename-input"
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => handleRenameKeyDown(e, clip.id)}
+                        onBlur={() => handleRenameSubmit(clip.id)}
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <div className="clip-filename" title={clip.filename}>
+                        {clip.filename}
+                        {clip.isMissing && (
+                          <span
+                            className="clip-missing-badge"
+                            title="Media file not found"
+                          >
+                            ⚠️
+                          </span>
+                        )}
+                      </div>
+                    )}
                     <div className="clip-metadata">
                       <span className="clip-duration">
                         {formatDuration(clip.duration)}
@@ -359,6 +440,9 @@ const MediaLibrary: React.FC<MediaLibraryProps> = ({
                 Relink Media
               </button>
             )}
+            <button onClick={() => handleStartRename(contextMenuId)}>
+              Rename
+            </button>
             <button onClick={() => handleRevealInFinder(contextMenuId)}>
               Reveal in Finder
             </button>

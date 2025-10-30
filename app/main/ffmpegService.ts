@@ -83,8 +83,9 @@ function getFFprobePath(): string {
 /**
  * Probe a video file and return its metadata
  * Uses ffprobe to extract duration, dimensions, codec info, etc.
+ * Handles both video files and audio-only files
  *
- * @param filePath - Absolute path to the video file
+ * @param filePath - Absolute path to the media file
  * @returns Promise<MediaInfo> - Media metadata
  */
 export async function probe(filePath: string): Promise<MediaInfo> {
@@ -101,9 +102,7 @@ export async function probe(filePath: string): Promise<MediaInfo> {
       "json",
       "-show_format",
       "-show_streams",
-      "-select_streams",
-      "v:0", // First video stream only
-      filePath,
+      filePath, // Removed -select_streams to get all streams (video and audio)
     ];
 
     const ffprobeProcess = spawn(ffprobePath, args);
@@ -127,17 +126,23 @@ export async function probe(filePath: string): Promise<MediaInfo> {
 
       try {
         const data = JSON.parse(stdout);
-        const videoStream = data.streams?.[0];
         const format = data.format;
+        const streams = data.streams || [];
 
-        if (!videoStream || !format) {
-          reject(new Error("Invalid video file or no video stream found"));
+        if (!format || streams.length === 0) {
+          reject(new Error("Invalid media file or no streams found"));
           return;
         }
 
+        // Find video stream (if exists)
+        const videoStream = streams.find((s: any) => s.codec_type === "video");
+
+        // Find audio stream (if exists)
+        const audioStream = streams.find((s: any) => s.codec_type === "audio");
+
         // Parse fps (can be in format "30/1" or just "30")
         let fps = 30; // default
-        if (videoStream.r_frame_rate) {
+        if (videoStream?.r_frame_rate) {
           const [num, den] = videoStream.r_frame_rate.split("/").map(Number);
           fps = den ? num / den : num;
         }
@@ -145,12 +150,20 @@ export async function probe(filePath: string): Promise<MediaInfo> {
         const mediaInfo: MediaInfo = {
           path: filePath,
           duration: Math.floor(parseFloat(format.duration) * 1000), // Convert to ms
-          width: videoStream.width || 0,
-          height: videoStream.height || 0,
-          fps: Math.round(fps),
-          codec: videoStream.codec_name || "unknown",
+          width: videoStream?.width || 0, // 0 for audio-only files
+          height: videoStream?.height || 0, // 0 for audio-only files
+          fps: videoStream ? Math.round(fps) : 0, // 0 for audio-only files
+          codec:
+            videoStream?.codec_name || audioStream?.codec_name || "unknown",
           bitrate: parseInt(format.bit_rate) || 0,
         };
+
+        console.log("[FFmpeg] Probe successful:", {
+          hasVideo: !!videoStream,
+          hasAudio: !!audioStream,
+          duration: mediaInfo.duration,
+          codec: mediaInfo.codec,
+        });
 
         resolve(mediaInfo);
       } catch (error) {
@@ -286,4 +299,269 @@ export async function checkFFmpegAvailability(): Promise<{
     ffmpegPath,
     ffprobePath,
   };
+}
+
+/**
+ * Remux a WebM file to MP4 format
+ * Used after recording to convert MediaRecorder output to standard MP4
+ * Uses stream copy when codecs are compatible, otherwise re-encodes
+ *
+ * @param inputPath - Path to source WebM file
+ * @param outputPath - Path for output MP4 file
+ * @returns Promise<void>
+ */
+export async function remuxWebMToMP4(
+  inputPath: string,
+  outputPath: string
+): Promise<void> {
+  const ffmpegPath = getFFmpegPath();
+
+  console.log("[FFmpeg] Remuxing WebM to MP4");
+  console.log("[FFmpeg] Input:", inputPath);
+  console.log("[FFmpeg] Output:", outputPath);
+
+  return new Promise((resolve, reject) => {
+    // Try stream copy first for speed
+    // If codecs are compatible (VP8/VP9 + Opus), this will work
+    // Otherwise, FFmpeg will fail and we'll re-encode
+    const args = [
+      "-i",
+      inputPath,
+      "-c:v",
+      "copy", // Try to copy video stream
+      "-c:a",
+      "aac", // Convert audio to AAC for MP4 compatibility
+      "-b:a",
+      "192k", // Audio bitrate
+      "-movflags",
+      "+faststart", // Optimize for streaming
+      "-y", // Overwrite output file
+      outputPath,
+    ];
+
+    console.log("[FFmpeg] Running:", ffmpegPath, args.join(" "));
+
+    const ffmpegProcess = spawn(ffmpegPath, args);
+
+    let stderr = "";
+
+    ffmpegProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+      console.log("[FFmpeg]", data.toString().trim());
+    });
+
+    ffmpegProcess.on("close", (code) => {
+      if (code !== 0) {
+        // Stream copy failed, try re-encoding
+        console.log("[FFmpeg] Stream copy failed, re-encoding...");
+        remuxWebMToMP4WithReencode(inputPath, outputPath)
+          .then(resolve)
+          .catch(reject);
+        return;
+      }
+
+      console.log("[FFmpeg] Remux completed successfully");
+      resolve();
+    });
+
+    ffmpegProcess.on("error", (error) => {
+      reject(new Error(`Failed to spawn ffmpeg: ${error.message}`));
+    });
+  });
+}
+
+/**
+ * Remux WebM to MP4 with re-encoding
+ * Fallback when stream copy is not compatible
+ *
+ * @param inputPath - Path to source WebM file
+ * @param outputPath - Path for output MP4 file
+ * @returns Promise<void>
+ */
+async function remuxWebMToMP4WithReencode(
+  inputPath: string,
+  outputPath: string
+): Promise<void> {
+  const ffmpegPath = getFFmpegPath();
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      "-i",
+      inputPath,
+      "-c:v",
+      "libx264", // Re-encode to H.264
+      "-preset",
+      "fast",
+      "-crf",
+      "23", // Good quality
+      "-c:a",
+      "aac",
+      "-b:a",
+      "192k",
+      "-movflags",
+      "+faststart",
+      "-y",
+      outputPath,
+    ];
+
+    console.log("[FFmpeg] Re-encoding:", ffmpegPath, args.join(" "));
+
+    const ffmpegProcess = spawn(ffmpegPath, args);
+
+    let stderr = "";
+
+    ffmpegProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+      console.log("[FFmpeg]", data.toString().trim());
+    });
+
+    ffmpegProcess.on("close", (code) => {
+      if (code !== 0) {
+        reject(
+          new Error(`ffmpeg re-encode failed with code ${code}: ${stderr}`)
+        );
+        return;
+      }
+
+      console.log("[FFmpeg] Re-encode completed successfully");
+      resolve();
+    });
+
+    ffmpegProcess.on("error", (error) => {
+      reject(new Error(`Failed to spawn ffmpeg: ${error.message}`));
+    });
+  });
+}
+
+/**
+ * Generate thumbnail strip for a media file
+ * Creates a series of thumbnails at regular intervals
+ * For PR #14 — Pro Timeline
+ *
+ * @param inputPath - Path to source media file
+ * @param outputDir - Directory to save thumbnails
+ * @param fps - Frames per second to extract (default: 2 = 1 thumb every 0.5s)
+ * @returns Promise<string> - Path to output directory
+ */
+export async function generateThumbnailStrip(
+  inputPath: string,
+  outputDir: string,
+  fps: number = 2
+): Promise<string> {
+  const ffmpegPath = getFFmpegPath();
+  const fs = await import("fs/promises");
+
+  console.log("[FFmpeg] Generating thumbnail strip for:", inputPath);
+  console.log("[FFmpeg] Output directory:", outputDir);
+
+  // Create output directory if it doesn't exist
+  await fs.mkdir(outputDir, { recursive: true });
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      "-i",
+      inputPath,
+      "-vf",
+      `fps=${fps},scale=160:-1`, // Extract at fps rate, scale to 160px width
+      "-y",
+      path.join(outputDir, "thumb-%04d.jpg"), // Output pattern
+    ];
+
+    console.log("[FFmpeg] Running:", ffmpegPath, args.join(" "));
+
+    const ffmpegProcess = spawn(ffmpegPath, args);
+
+    let stderr = "";
+
+    ffmpegProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    ffmpegProcess.on("close", (code) => {
+      if (code !== 0) {
+        reject(
+          new Error(
+            `ffmpeg thumbnail generation failed with code ${code}: ${stderr}`
+          )
+        );
+        return;
+      }
+
+      console.log("[FFmpeg] Thumbnail strip generated successfully");
+      resolve(outputDir);
+    });
+
+    ffmpegProcess.on("error", (error) => {
+      reject(new Error(`Failed to spawn ffmpeg: ${error.message}`));
+    });
+  });
+}
+
+/**
+ * Generate waveform visualization for an audio/video file
+ * Creates a PNG image showing the audio waveform
+ * For PR #14 — Pro Timeline
+ *
+ * @param inputPath - Path to source media file
+ * @param outputPath - Path for output PNG file
+ * @param width - Width of waveform image (default: 1200)
+ * @param height - Height of waveform image (default: 200)
+ * @returns Promise<string> - Path to output waveform PNG
+ */
+export async function generateWaveform(
+  inputPath: string,
+  outputPath: string,
+  width: number = 1200,
+  height: number = 200
+): Promise<string> {
+  const ffmpegPath = getFFmpegPath();
+  const fs = await import("fs/promises");
+
+  console.log("[FFmpeg] Generating waveform for:", inputPath);
+  console.log("[FFmpeg] Output path:", outputPath);
+
+  // Ensure output directory exists
+  const outputDir = path.dirname(outputPath);
+  await fs.mkdir(outputDir, { recursive: true });
+
+  return new Promise((resolve, reject) => {
+    const args = [
+      "-i",
+      inputPath,
+      "-filter_complex",
+      `aformat=channel_layouts=mono,showwavespic=s=${width}x${height}:colors=white`,
+      "-frames:v",
+      "1",
+      "-y",
+      outputPath,
+    ];
+
+    console.log("[FFmpeg] Running:", ffmpegPath, args.join(" "));
+
+    const ffmpegProcess = spawn(ffmpegPath, args);
+
+    let stderr = "";
+
+    ffmpegProcess.stderr.on("data", (data) => {
+      stderr += data.toString();
+    });
+
+    ffmpegProcess.on("close", (code) => {
+      if (code !== 0) {
+        reject(
+          new Error(
+            `ffmpeg waveform generation failed with code ${code}: ${stderr}`
+          )
+        );
+        return;
+      }
+
+      console.log("[FFmpeg] Waveform generated successfully");
+      resolve(outputPath);
+    });
+
+    ffmpegProcess.on("error", (error) => {
+      reject(new Error(`Failed to spawn ffmpeg: ${error.message}`));
+    });
+  });
 }

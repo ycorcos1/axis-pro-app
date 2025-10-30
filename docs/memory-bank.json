@@ -62,6 +62,12 @@
       "when": "2025-10-27",
       "what": "Timeline component receives selected clip and trim update handler from App",
       "why": "Enables two-way data flow: Timeline displays current trim state, updates propagate back to App via callback (implemented in PR #6)"
+    },
+    {
+      "id": "recording-architecture",
+      "when": "2025-10-28",
+      "what": "Hybrid recording architecture: Main process provides desktopCapturer sources, renderer handles MediaRecorder + stream management",
+      "why": "Security model requires screen capture enumeration in main process, but MediaRecorder API only available in renderer. Implemented in PR #13"
     }
   ],
   "modules": {
@@ -79,9 +85,12 @@
         "window.electronAPI.checkFFmpeg()",
         "window.electronAPI.probe(path)",
         "window.electronAPI.importClips(paths)",
-        "window.electronAPI.exportTimeline(segment, targetPath, options)"
+        "window.electronAPI.exportTimeline(segment, targetPath, options)",
+        "window.electronAPI.getDesktopSources()",
+        "window.electronAPI.remuxRecording(inputPath, outputPath)",
+        "window.electronAPI.saveRecordingChunk(projectId, fileName, data)"
       ],
-      "notes": "Secure IPC bridge via contextBridge. Exposes type-safe APIs to renderer. All methods return Promises. selectSavePath added in PR #8 for export file dialog."
+      "notes": "Secure IPC bridge via contextBridge. Exposes type-safe APIs to renderer. All methods return Promises. Recording APIs added in PR #13."
     },
     "ipcHandlers": {
       "owner": "main",
@@ -91,18 +100,22 @@
         "check-ffmpeg: Returns FFmpeg/FFprobe availability status",
         "probe: Returns MediaInfo for a file using ffprobe",
         "import-clips: Converts file paths to Clip objects with real metadata",
-        "export-timeline: Exports timeline segment to MP4 using ffmpeg"
+        "export-timeline: Exports timeline segment to MP4 using ffmpeg",
+        "get-desktop-sources: Lists available screen/window capture sources (PR #13)",
+        "remux-recording: Converts WebM recording to MP4 using FFmpeg (PR #13)",
+        "save-recording-chunk: Saves recording data chunks to project recordings directory (PR #13)"
       ],
-      "notes": "IPC handlers registered in main.ts. FFmpeg integration completed in PR #4. Export dialog added in PR #8."
+      "notes": "IPC handlers registered in main.ts. FFmpeg integration completed in PR #4. Export dialog added in PR #8. Recording handlers added in PR #13."
     },
     "ffmpegService": {
       "owner": "main",
       "api": [
         "probe(filePath): Returns MediaInfo with duration, dimensions, fps, codec, bitrate",
         "trimExport(inputPath, inMs, outMs, outputPath, options?): Exports trimmed video segment",
+        "remuxWebMToMP4(inputPath, outputPath): Converts WebM to MP4, tries stream copy first then re-encodes if needed (PR #13)",
         "checkFFmpegAvailability(): Returns binary availability status"
       ],
-      "notes": "Uses spawn to invoke ffmpeg/ffprobe binaries. Handles both dev and production paths via process.resourcesPath. Defaults to -c copy (stream copy) for fast exports, falls back to re-encode if needed. Located in app/main/ffmpegService.ts"
+      "notes": "Uses spawn to invoke ffmpeg/ffprobe binaries. Handles both dev and production paths via process.resourcesPath. Defaults to -c copy (stream copy) for fast exports, falls back to re-encode if needed. WebM remux added in PR #13 for recording workflow. Located in app/main/ffmpegService.ts"
     },
     "types": {
       "owner": "shared",
@@ -111,9 +124,13 @@
         "MediaInfo",
         "TimelineSegment",
         "ExportOptions",
-        "ExportResult"
+        "ExportResult",
+        "DesktopSource",
+        "RecordingConfig",
+        "RecordingState",
+        "RecordingResult"
       ],
-      "notes": "Shared TypeScript types for IPC contract. Located in app/shared/types.ts"
+      "notes": "Shared TypeScript types for IPC contract. Recording types added in PR #13. Located in app/shared/types.ts"
     },
     "theme": {
       "owner": "renderer",
@@ -146,6 +163,20 @@
       "owner": "renderer",
       "api": ["<PropertiesPanel />"],
       "notes": "Right panel for clip properties and export settings"
+    },
+    "recordingService": {
+      "owner": "main",
+      "api": [
+        "getDesktopSources(): Returns DesktopSource[] with screens and windows"
+      ],
+      "notes": "Uses Electron desktopCapturer to enumerate available capture sources. Returns sources with thumbnails for UI selection. Actual recording handled in renderer via MediaRecorder. Implemented in PR #13. Located in app/main/recordingService.ts"
+    },
+    "recordingPanel": {
+      "owner": "renderer",
+      "api": [
+        "<RecordingPanel projectId={string|null} onRecordingComplete={(filePath) => void} />"
+      ],
+      "notes": "Compact HUD component for screen/window recording with webcam and mic toggles. Uses navigator.mediaDevices.getUserMedia with chromeMediaSourceId constraint to capture selected desktop source. Combines screen, webcam, and mic streams. Uses MediaRecorder to record to WebM. Saves chunks via IPC, remuxes to MP4 on stop, and auto-imports to timeline. Implements recording timer and visual feedback. Implemented in PR #13."
     }
   },
   "todos": [
@@ -161,9 +192,9 @@
     "PR #10: ✅ UX polish - COMPLETED",
     "PR #11: ✅ Project save/load - COMPLETED",
     "PR #12: Packaging for macOS (.dmg)",
-    "PR #13: Submission prep"
+    "PR #13: ✅ Recording Suite - COMPLETED"
   ],
-  "current_pr": "PR #11 - Project Save/Load - COMPLETED",
+  "current_pr": "PR #13 - Recording Suite - COMPLETED",
   "completed_prs": [
     {
       "pr": "#1",
@@ -239,6 +270,13 @@
       "completed": "2025-10-27",
       "branch": "feature/project-save-load",
       "summary": "Implemented complete project persistence workflow. Added handleSaveProject function in App.tsx that converts editing clips/segments to project format and saves to disk. Project state includes clips, segments, trim points, and stats. Save operation updates project.json, generates thumbnail if missing, and updates lastSaved timestamp. Load functionality hydrates project clips into editing state. Auto-save integration with manual save option. Projects remain synchronized between editor and dashboard. Save button in TopBar triggers manual save with visual feedback."
+    },
+    {
+      "pr": "#13",
+      "title": "Recording Suite (Screen, Webcam, Mic, PiP)",
+      "completed": "2025-10-28",
+      "branch": "feature/recording-suite",
+      "summary": "Implemented complete screen recording functionality per Final PRD. Added recordingService.ts using Electron desktopCapturer to enumerate screens/windows. Implemented RecordingPanel React component with compact HUD design featuring source picker with thumbnails, webcam and mic toggles, and start/stop controls. Recording uses navigator.mediaDevices.getUserMedia with chromeMediaSourceId constraint to capture desktop, combines with optional webcam and mic streams via MediaRecorder. Saves WebM chunks to ~/AxisPro/projects/{id}/recordings/ directory. Added remuxWebMToMP4 function to ffmpegService that converts recordings to MP4 (tries stream copy, falls back to re-encode). On recording stop, automatically imports MP4 to timeline. Added IPC handlers: get-desktop-sources, remux-recording, save-recording-chunk. Extended shared types with DesktopSource, RecordingConfig, RecordingState, RecordingResult. All recording features integrated into App.tsx with toast notifications for user feedback."
     }
   ]
 }

@@ -1,10 +1,12 @@
 /**
  * PropertiesPanel Component
- * @mem ref: design-spec
- * Right panel for clip properties and export settings
+ * @mem ref: design-spec, pr16-text-overlays
+ * Right panel for clip properties, project settings, and overlay editing
  */
 
 import React, { useState } from "react";
+import type { Overlay } from "../../../shared/timelineTypes";
+import OverlayInspector from "./OverlayInspector";
 import "./PropertiesPanel.css";
 
 interface Clip {
@@ -23,20 +25,36 @@ interface PropertiesPanelProps {
   clip: Clip | null;
   onUpdateTrim: (clipId: string, inMs: number, outMs: number) => void;
   onExport: () => void;
+  isExporting?: boolean;
   projectTitle?: string;
   projectId?: string | null;
+  projectThumbnailUrl?: string | null;
   onUpdateProjectTitle?: (projectId: string, newTitle: string) => void;
+  onUpdateProjectThumbnail?: (projectId: string) => void;
+  onClearProjectThumbnail?: (projectId: string) => void;
+  selectedOverlay?: Overlay | null;
+  onUpdateOverlay?: (overlayId: string, updates: Partial<Overlay>) => void;
+  onDeleteOverlay?: (overlayId: string) => void;
 }
 
 const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   clip,
   onUpdateTrim,
   onExport,
+  isExporting = false,
   projectTitle,
   projectId,
+  projectThumbnailUrl,
   onUpdateProjectTitle,
+  onUpdateProjectThumbnail,
+  onClearProjectThumbnail,
+  selectedOverlay,
+  onUpdateOverlay,
+  onDeleteOverlay,
 }) => {
-  const [activeTab, setActiveTab] = useState<"clip" | "project">("clip");
+  const [activeTab, setActiveTab] = useState<"clip" | "project" | "overlay">(
+    "clip"
+  );
   const [exportPreset, setExportPreset] = useState<string>("source");
   const [editingIn, setEditingIn] = useState(false);
   const [editingOut, setEditingOut] = useState(false);
@@ -49,6 +67,13 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   React.useEffect(() => {
     setProjectTitleValue(projectTitle || "");
   }, [projectTitle]);
+
+  // Auto-switch to Overlay tab when overlay is selected
+  React.useEffect(() => {
+    if (selectedOverlay) {
+      setActiveTab("overlay");
+    }
+  }, [selectedOverlay]);
 
   // Format time in MM:SS:MS
   const formatTimecode = (ms: number): string => {
@@ -137,6 +162,12 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           onClick={() => setActiveTab("project")}
         >
           Project
+        </button>
+        <button
+          className={`tab-button ${activeTab === "overlay" ? "active" : ""}`}
+          onClick={() => setActiveTab("overlay")}
+        >
+          Overlay
         </button>
       </div>
 
@@ -284,37 +315,32 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               <button
                 className="export-button"
                 onClick={onExport}
-                disabled={!clip}
+                disabled={isExporting}
+                title={
+                  isExporting
+                    ? "Export in progress..."
+                    : "Export timeline composition to MP4"
+                }
               >
-                Export MP4
+                {isExporting ? "Exporting..." : "Export Timeline MP4"}
               </button>
             </div>
           </>
         )}
 
         {activeTab === "project" && (
-          <div className="properties-section">
-            <h3 className="section-title">Project Settings</h3>
-            <div className="property-item">
-              <span className="property-label">Title</span>
-              {editingProjectTitle ? (
-                <input
-                  className="property-input"
-                  type="text"
-                  value={projectTitleValue}
-                  onChange={(e) => setProjectTitleValue(e.target.value)}
-                  onBlur={() => {
-                    setEditingProjectTitle(false);
-                    if (
-                      projectId &&
-                      onUpdateProjectTitle &&
-                      projectTitleValue.trim()
-                    ) {
-                      onUpdateProjectTitle(projectId, projectTitleValue.trim());
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+          <>
+            <div className="properties-section">
+              <h3 className="section-title">Project Settings</h3>
+              <div className="property-item">
+                <span className="property-label">Title</span>
+                {editingProjectTitle ? (
+                  <input
+                    className="property-input"
+                    type="text"
+                    value={projectTitleValue}
+                    onChange={(e) => setProjectTitleValue(e.target.value)}
+                    onBlur={() => {
                       setEditingProjectTitle(false);
                       if (
                         projectId &&
@@ -326,28 +352,94 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                           projectTitleValue.trim()
                         );
                       }
-                    } else if (e.key === "Escape") {
-                      setEditingProjectTitle(false);
-                      setProjectTitleValue(projectTitle || "");
-                    }
-                  }}
-                  autoFocus
-                />
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        setEditingProjectTitle(false);
+                        if (
+                          projectId &&
+                          onUpdateProjectTitle &&
+                          projectTitleValue.trim()
+                        ) {
+                          onUpdateProjectTitle(
+                            projectId,
+                            projectTitleValue.trim()
+                          );
+                        }
+                      } else if (e.key === "Escape") {
+                        setEditingProjectTitle(false);
+                        setProjectTitleValue(projectTitle || "");
+                      }
+                    }}
+                    autoFocus
+                  />
+                ) : (
+                  <span
+                    className="property-value property-value-editable"
+                    onClick={() => setEditingProjectTitle(true)}
+                    title="Click to edit"
+                  >
+                    {projectTitle || "Untitled Project"}
+                  </span>
+                )}
+              </div>
+              <div className="property-item">
+                <span className="property-label">FPS</span>
+                <span className="property-value">30</span>
+              </div>
+            </div>
+
+            <div className="properties-section">
+              <h3 className="section-title">Project Thumbnail</h3>
+              {projectThumbnailUrl ? (
+                <div className="thumbnail-preview">
+                  <img
+                    src={projectThumbnailUrl}
+                    alt="Project thumbnail"
+                    className="thumbnail-image"
+                  />
+                </div>
               ) : (
-                <span
-                  className="property-value property-value-editable"
-                  onClick={() => setEditingProjectTitle(true)}
-                  title="Click to edit"
-                >
-                  {projectTitle || "Untitled Project"}
-                </span>
+                <div className="thumbnail-placeholder">
+                  <span className="thumbnail-placeholder-text">
+                    No thumbnail set
+                  </span>
+                </div>
               )}
+              <div className="thumbnail-controls">
+                <button
+                  className="thumbnail-button"
+                  onClick={() =>
+                    projectId && onUpdateProjectThumbnail?.(projectId)
+                  }
+                  disabled={!projectId}
+                  title="Generate from first clip"
+                >
+                  Update Thumbnail
+                </button>
+                {projectThumbnailUrl && (
+                  <button
+                    className="thumbnail-button thumbnail-button-clear"
+                    onClick={() =>
+                      projectId && onClearProjectThumbnail?.(projectId)
+                    }
+                    disabled={!projectId}
+                    title="Clear thumbnail"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
             </div>
-            <div className="property-item">
-              <span className="property-label">FPS</span>
-              <span className="property-value">30</span>
-            </div>
-          </div>
+          </>
+        )}
+
+        {activeTab === "overlay" && onUpdateOverlay && onDeleteOverlay && (
+          <OverlayInspector
+            overlay={selectedOverlay || null}
+            onUpdateOverlay={onUpdateOverlay}
+            onDeleteOverlay={onDeleteOverlay}
+          />
         )}
       </div>
     </div>

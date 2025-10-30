@@ -1,7 +1,8 @@
 /**
- * Project IO Service
- * @mem ref: pr9-dashboard, ipc-surface
+ * Project IO Service with Auto-Save Support (PR #15)
+ * @mem ref: pr9-dashboard, ipc-surface, pr15-undo-redo
  * Handles reading and writing project files to ~/AxisPro/projects/
+ * Includes debounced auto-save functionality
  */
 
 import fs from "fs/promises";
@@ -11,6 +12,12 @@ import type { Project, ProjectMetadata } from "../shared/types.js";
 
 // Project root directory: ~/AxisPro/projects/
 const PROJECTS_ROOT = path.join(homedir(), "AxisPro", "projects");
+
+// Auto-save debounce timeout (3 seconds)
+const AUTO_SAVE_DEBOUNCE_MS = 3000;
+
+// Map to store debounce timers per project
+const autoSaveTimers = new Map<string, NodeJS.Timeout>();
 
 /**
  * Ensure the projects directory exists
@@ -163,11 +170,12 @@ export async function saveProject(project: Project): Promise<void> {
 
   // Update stats
   project.stats = {
-    durationMs: project.segments.reduce((sum, seg) => {
-      return sum + (seg.outMs - seg.inMs);
-    }, 0),
+    durationMs:
+      project.segments?.reduce((sum, seg) => {
+        return sum + (seg.outMs - seg.inMs);
+      }, 0) || 0,
     resolution: "",
-    clipCount: Object.keys(project.clips).length,
+    clipCount: project.clips ? Object.keys(project.clips).length : 0,
   };
 
   const projectFile = getProjectFilePath(project.id);
@@ -255,4 +263,57 @@ export async function deleteProject(projectId: string): Promise<void> {
     console.error(`[ProjectIO] Failed to delete project ${projectId}:`, error);
     throw error;
   }
+}
+
+/**
+ * Schedule an auto-save for a project (debounced)
+ * Automatically saves after AUTO_SAVE_DEBOUNCE_MS milliseconds of no changes
+ */
+export function scheduleAutoSave(
+  project: Project,
+  callback?: () => void
+): void {
+  const projectId = project.id;
+
+  // Clear existing timer if any
+  if (autoSaveTimers.has(projectId)) {
+    clearTimeout(autoSaveTimers.get(projectId)!);
+  }
+
+  // Schedule new save
+  const timer = setTimeout(async () => {
+    try {
+      console.log(`[ProjectIO] Auto-saving project: ${projectId}`);
+      await saveProject(project);
+      console.log(`[ProjectIO] Auto-save completed: ${projectId}`);
+      if (callback) callback();
+    } catch (error) {
+      console.error(`[ProjectIO] Auto-save failed for ${projectId}:`, error);
+    } finally {
+      autoSaveTimers.delete(projectId);
+    }
+  }, AUTO_SAVE_DEBOUNCE_MS);
+
+  autoSaveTimers.set(projectId, timer);
+  console.log(
+    `[ProjectIO] Auto-save scheduled for ${projectId} in ${AUTO_SAVE_DEBOUNCE_MS}ms`
+  );
+}
+
+/**
+ * Cancel any pending auto-save for a project
+ */
+export function cancelAutoSave(projectId: string): void {
+  if (autoSaveTimers.has(projectId)) {
+    clearTimeout(autoSaveTimers.get(projectId)!);
+    autoSaveTimers.delete(projectId);
+    console.log(`[ProjectIO] Auto-save cancelled for ${projectId}`);
+  }
+}
+
+/**
+ * Check if a project has a pending auto-save
+ */
+export function hasPendingAutoSave(projectId: string): boolean {
+  return autoSaveTimers.has(projectId);
 }

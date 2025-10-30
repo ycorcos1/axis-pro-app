@@ -1,11 +1,18 @@
 /**
  * TopBar Component
- * @mem ref: design-spec, ipc-surface, pr5-import, pr8-export, pr9-dashboard
+ * @mem ref: design-spec, ipc-surface, pr5-import, pr8-export, pr9-dashboard, pr13-recording-suite
  * Main navigation and menu bar per Axis Pro layout
  */
 
 import React, { useState } from "react";
 import "./TopBar.css";
+
+export type RecordingMode =
+  | "movie"
+  | "audio"
+  | "screen"
+  | "screen-camera"
+  | null;
 
 interface TopBarProps {
   onImportClick?: () => void;
@@ -19,6 +26,7 @@ interface TopBarProps {
   lastSaved?: number | null;
   onNewProject?: () => void;
   onOpenProject?: () => void;
+  onRecordingModeSelect?: (mode: RecordingMode) => void;
 }
 
 const TopBar: React.FC<TopBarProps> = ({
@@ -33,8 +41,10 @@ const TopBar: React.FC<TopBarProps> = ({
   lastSaved = null,
   onNewProject,
   onOpenProject,
+  onRecordingModeSelect,
 }) => {
   const [fileMenuOpen, setFileMenuOpen] = useState(false);
+  const [recordMenuOpen, setRecordMenuOpen] = useState(false);
 
   const formatLastSaved = (timestamp: number | null): string => {
     if (!timestamp) return "";
@@ -48,7 +58,16 @@ const TopBar: React.FC<TopBarProps> = ({
     <div className="topbar">
       <div className="topbar-brand">
         {onBackToDashboard && (
-          <button className="topbar-back-btn" onClick={onBackToDashboard}>
+          <button
+            className="topbar-back-btn"
+            onClick={onBackToDashboard}
+            disabled={isExporting}
+            title={
+              isExporting
+                ? "Cannot navigate while exporting"
+                : "Back to Dashboard"
+            }
+          >
             ← Dashboard
           </button>
         )}
@@ -139,6 +158,68 @@ const TopBar: React.FC<TopBarProps> = ({
             </>
           )}
         </div>
+
+        {/* Record Menu */}
+        {onRecordingModeSelect && (
+          <div className="topbar-menu-dropdown">
+            <button
+              className="topbar-menu-item"
+              onClick={() => setRecordMenuOpen(!recordMenuOpen)}
+            >
+              Record
+            </button>
+            {recordMenuOpen && (
+              <>
+                <div
+                  className="topbar-menu-overlay"
+                  onClick={() => setRecordMenuOpen(false)}
+                />
+                <div className="topbar-menu-dropdown-content">
+                  <button
+                    className="topbar-menu-dropdown-item"
+                    onClick={() => {
+                      setRecordMenuOpen(false);
+                      onRecordingModeSelect("movie");
+                    }}
+                    disabled={!projectId}
+                  >
+                    🎥 Movie (Webcam + Audio)
+                  </button>
+                  <button
+                    className="topbar-menu-dropdown-item"
+                    onClick={() => {
+                      setRecordMenuOpen(false);
+                      onRecordingModeSelect("audio");
+                    }}
+                    disabled={!projectId}
+                  >
+                    🎤 Audio Only
+                  </button>
+                  <button
+                    className="topbar-menu-dropdown-item"
+                    onClick={() => {
+                      setRecordMenuOpen(false);
+                      onRecordingModeSelect("screen");
+                    }}
+                    disabled={!projectId}
+                  >
+                    🖥️ Screen Recording
+                  </button>
+                  <button
+                    className="topbar-menu-dropdown-item"
+                    onClick={() => {
+                      setRecordMenuOpen(false);
+                      onRecordingModeSelect("screen-camera");
+                    }}
+                    disabled={!projectId}
+                  >
+                    📹 Screen + Camera (PiP)
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

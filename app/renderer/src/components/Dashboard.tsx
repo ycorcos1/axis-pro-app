@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect } from "react";
 import "./Dashboard.css";
+import AIShorts from "./AIShorts";
 
 interface ProjectMetadata {
   id: string;
@@ -33,6 +34,8 @@ const Dashboard: React.FC<DashboardProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
+  const [showAIShorts, setShowAIShorts] = useState(false);
+  const [aiShortsProjectId, setAiShortsProjectId] = useState<string>("");
 
   // Load projects on mount
   useEffect(() => {
@@ -155,6 +158,46 @@ const Dashboard: React.FC<DashboardProps> = ({
     setMenuOpenId(menuOpenId === projectId ? null : projectId);
   };
 
+  const handleOpenAIShorts = async () => {
+    // Create a temporary project for AI Shorts
+    try {
+      const project = await window.electronAPI.createProject(
+        "AI Shorts Session"
+      );
+      setAiShortsProjectId(project.id);
+      setShowAIShorts(true);
+    } catch (error) {
+      console.error("[Dashboard] Failed to create AI Shorts project:", error);
+    }
+  };
+
+  const handleOpenExistingAIShorts = (projectId: string) => {
+    // Open existing AI Shorts project
+    setAiShortsProjectId(projectId);
+    setShowAIShorts(true);
+  };
+
+  const handleCloseAIShorts = () => {
+    setShowAIShorts(false);
+    loadProjects(); // Refresh projects list
+  };
+
+  const handleProjectClick = (project: ProjectMetadata) => {
+    // Check if this is an AI Shorts Session project
+    if (project.title.includes("AI Shorts Session")) {
+      handleOpenExistingAIShorts(project.id);
+    } else {
+      onOpenProject(project.id);
+    }
+  };
+
+  // Show AI Shorts view if active
+  if (showAIShorts && aiShortsProjectId) {
+    return (
+      <AIShorts projectId={aiShortsProjectId} onClose={handleCloseAIShorts} />
+    );
+  }
+
   return (
     <div className="dashboard">
       <div className="dashboard-header">
@@ -162,6 +205,9 @@ const Dashboard: React.FC<DashboardProps> = ({
           <h1>Axis Pro</h1>
         </div>
         <div className="dashboard-actions">
+          <button className="btn-secondary" onClick={handleOpenAIShorts}>
+            ✨ AI Shorts (Beta)
+          </button>
           <button className="btn-primary" onClick={handleNewProject}>
             New Project
           </button>
@@ -186,7 +232,7 @@ const Dashboard: React.FC<DashboardProps> = ({
               <div
                 key={project.id}
                 className="project-card"
-                onClick={() => handleOpen(project.id)}
+                onClick={() => handleProjectClick(project)}
               >
                 <div className="project-thumbnail">
                   {project.previewThumbPath ? (
