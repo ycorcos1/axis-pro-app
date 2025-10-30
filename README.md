@@ -95,6 +95,7 @@ See [docs/PR_Summaries.md](docs/PR_Summaries.md) for complete implementation det
 **Coming Soon:** Pre-built installers will be available on [GitHub Releases](https://github.com/ycorcos1/axis-pro-app/releases).
 
 #### macOS Installation
+
 1. Download `Axis-Pro-1.0.0-mac-arm64.dmg`
 2. Open the DMG file
 3. Drag "Axis Pro" to Applications folder
@@ -103,6 +104,7 @@ See [docs/PR_Summaries.md](docs/PR_Summaries.md) for complete implementation det
    - Only needed on first launch
 
 **If you see "damaged" error:**
+
 ```bash
 xattr -cr "/Applications/Axis Pro.app"
 ```
@@ -110,6 +112,7 @@ xattr -cr "/Applications/Axis Pro.app"
 **Requirements:** macOS 10.14+ (Mojave or later), Apple Silicon (M1/M2/M3) or Intel
 
 #### Windows Installation
+
 1. Download `Axis-Pro-Setup-1.0.0.exe`
 2. Run the installer
 3. Follow installation prompts
@@ -126,15 +129,17 @@ Perfect for developers or testers who want the latest features.
 #### Quick Start (5 minutes)
 
 1. **Install Node.js 20+**
+
    ```bash
    # macOS
    brew install node
-   
+
    # Windows
    # Download from nodejs.org
    ```
 
 2. **Clone and Install**
+
    ```bash
    git clone https://github.com/ycorcos1/axis-pro-app.git
    cd axis-pro-app
@@ -142,15 +147,17 @@ Perfect for developers or testers who want the latest features.
    ```
 
 3. **Setup FFmpeg** (Required for video processing)
-   
+
    **macOS (Automated):**
+
    ```bash
    ./setup-ffmpeg.sh
    ```
-   
+
    **Windows/Manual Setup:** See [FFmpeg Setup Guide](#ffmpeg-setup) below
 
 4. **Run the App**
+
    ```bash
    npm run dev
    ```
@@ -174,6 +181,38 @@ To enable AI-powered short video generation:
 
 **Note:** AI Shorts is optional and not required for core functionality.
 
+---
+
+### 📝 For Graders/Reviewers
+
+**Testing AI Shorts Feature:**
+
+⚠️ **Important:** AI Shorts only works when running from source code (not in the packaged app).
+
+To test the AI Shorts feature:
+
+```bash
+# 1. Clone and install
+git clone https://github.com/ycorcos1/axis-pro-app.git
+cd axis-pro-app
+npm install
+
+# 2. Setup FFmpeg
+./setup-ffmpeg.sh
+
+# 3. Add your OpenAI API key
+echo "OPENAI_API_KEY=sk-your-key-here" > .env
+
+# 4. Run in development mode
+npm run dev
+
+# 5. Click "✨ AI Shorts (Beta)" on the Dashboard
+```
+
+**Why?** The `.env` file is excluded from packaged builds for security. When running from source with `npm run dev`, the environment variables load correctly.
+
+**All other features** (recording, timeline editing, text overlays, export, etc.) work in both development and packaged versions without any API key.
+
 ## Development
 
 ### Prerequisites
@@ -191,32 +230,37 @@ Axis Pro requires FFmpeg for video processing. Choose your setup method:
 ### macOS Setup
 
 #### Option A: Automated Setup (Recommended) ⚡
+
 ```bash
 ./setup-ffmpeg.sh
 ```
+
 This script automatically downloads and configures FFmpeg binaries for you.
 
 #### Option B: Manual Setup
 
 1. **Download FFmpeg for macOS:**
+
    - Visit [evermeet.cx/ffmpeg](https://evermeet.cx/ffmpeg/)
    - Download both `ffmpeg` and `ffprobe` static binaries
 
 2. **Install binaries:**
+
    ```bash
    # Create directory
    mkdir -p resources/ffmpeg/mac
-   
+
    # Copy downloaded binaries (adjust paths as needed)
    cp ~/Downloads/ffmpeg resources/ffmpeg/mac/ffmpeg
    cp ~/Downloads/ffprobe resources/ffmpeg/mac/ffprobe
-   
+
    # Make executable
    chmod +x resources/ffmpeg/mac/ffmpeg
    chmod +x resources/ffmpeg/mac/ffprobe
    ```
 
 3. **Remove macOS quarantine** (required for unsigned binaries):
+
    ```bash
    xattr -d com.apple.quarantine resources/ffmpeg/mac/ffmpeg
    xattr -d com.apple.quarantine resources/ffmpeg/mac/ffprobe
@@ -232,15 +276,17 @@ This script automatically downloads and configures FFmpeg binaries for you.
 ### Windows Setup
 
 1. **Download FFmpeg for Windows:**
+
    - Visit [www.gyan.dev/ffmpeg/builds/](https://www.gyan.dev/ffmpeg/builds/)
    - Download `ffmpeg-release-essentials.zip`
    - Extract the ZIP file
 
 2. **Install binaries:**
+
    ```bash
    # Create directory
    mkdir -p resources/ffmpeg/windows
-   
+
    # Copy these files from extracted folder to resources/ffmpeg/windows/:
    # - bin/ffmpeg.exe
    # - bin/ffprobe.exe
@@ -255,6 +301,7 @@ This script automatically downloads and configures FFmpeg binaries for you.
 ### Troubleshooting FFmpeg
 
 **FFmpeg not found errors:**
+
 - Ensure binaries are in correct directory (`resources/ffmpeg/mac/` or `resources/ffmpeg/windows/`)
 - Check that binaries are executable: `ls -l resources/ffmpeg/mac/`
 - On macOS, remove quarantine attributes if needed
