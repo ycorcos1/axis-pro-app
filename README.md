@@ -425,10 +425,12 @@ To build a distributable version of the app from source:
 **First Launch Security Warning (macOS)**:
 
 If you see "App is damaged" or "unidentified developer":
+
 ```bash
 # Remove quarantine attribute
 xattr -cr "/Applications/Axis Pro.app"
 ```
+
 Or right-click the app → "Open" → Click "Open" in the dialog
 
 **FFmpeg not found errors**:
