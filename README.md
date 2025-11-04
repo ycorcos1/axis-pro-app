@@ -2,6 +2,8 @@
 
 **Professional-grade, minimalist desktop video editor built with Electron + React + TypeScript**
 
+Walkthrough Video: https://www.youtube.com/watch?v=HkHcY1KhOhc&t=7s
+
 [![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/ycorcos1/axis-pro-app/releases)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows-lightgrey.svg)]()
